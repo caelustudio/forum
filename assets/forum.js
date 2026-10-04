@@ -377,7 +377,7 @@
     box.innerHTML =
       (u
         ? '<a class="btn btn-primary" href="/new.html">发帖</a>' +
-          '<div class="me-chip" id="meChip" title="账号菜单">' + avatarHtml(u, 'sm') + vBadge(u) + '<b>' + esc(u.nickname || 'Star ID 用户') + '</b></div>'
+          '<div class="me-chip" id="meChip" title="账号菜单">' + avatarHtml(u, 'sm') + '<b>' + esc(u.nickname || 'Star ID 用户') + '</b>' + vBadge(u) + '</div>'
         : '<button class="btn btn-primary" id="loginBtn">登录 / 注册</button>') +
       '<button class="theme-toggle" id="themeBtn" title="切换深色/浅色模式" aria-label="切换深色/浅色模式"><svg id="themeIcon" viewBox="0 0 24 24"></svg></button>';
 

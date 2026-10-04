@@ -8,7 +8,7 @@
 <link rel="icon" href="/assets/favicon.png" type="image/png">
 <link rel="canonical" href="https://forum.caelus.top/">
 <link rel="stylesheet" href="https://www.caelus.top/fonts/opposans40/result.css">
-<link rel="stylesheet" href="/assets/forum.css?v=20261004f">
+<link rel="stylesheet" href="/assets/forum.css?v=20261004g">
 <script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 </head>
 <body>
@@ -61,7 +61,7 @@
   © 2026 Caelus Studio · <a href="https://www.caelus.top/">caelus.top</a>
 </footer>
 
-<script src="/assets/forum.js?v=20261004f"></script>
+<script src="/assets/forum.js?v=20261004g"></script>
 <script>
 (function () {
   var sp = new URLSearchParams(location.search);
@@ -147,7 +147,7 @@
     var onlyFrom = from.length && m.indexOf('title') < 0 && m.indexOf('body') < 0;
     return '<a class="post-card" href="/post.html?id=' + encodeURIComponent(p.id) + '">' +
       '<div class="pc-head">' +
-        '<div class="who">' + Forum.avatarHtml(p) + Forum.vBadge(p) + '<b>' + Forum.hl(p.author, kw) + '</b>' +
+        '<div class="who">' + Forum.avatarHtml(p) + '<b>' + Forum.hl(p.author, kw) + '</b>' + Forum.vBadge(p) +
           (p.starId ? '<span class="sid">' + Forum.hl(p.starId, kw) + '</span>' : '') + '</div>' +
         '<span class="pc-time">' + Forum.timeAgo(p.createdAt) + '</span>' +
       '</div>' +
