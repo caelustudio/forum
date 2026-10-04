@@ -273,8 +273,7 @@
 
   /* ---------- 顶栏 / 页脚 ---------- */
   var NAV = [
-    { href: '/', key: 'index', label: '广场' },
-    { href: '/?sort=hot', key: 'hot', label: '热门' },
+    { href: '/', key: 'index', label: '论坛' },
     { href: '/mine.html', key: 'mine', label: '我的帖子' }
   ];
 

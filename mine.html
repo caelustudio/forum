@@ -32,7 +32,7 @@
   © 2026 Caelus Studio · <a href="https://www.caelus.top/">caelus.top</a>
 </footer>
 
-<script src="/assets/forum.js"></script>
+<script src="/assets/forum.js?v=20261004b"></script>
 <script>
 (function () {
   var listEl = Forum.q('#list');
@@ -80,7 +80,7 @@
       if (!d || !d.ok) { listEl.innerHTML = '<div class="empty"><b>加载失败</b>' + Forum.esc((d && d.error) || '') + '</div>'; return; }
       Forum.q('#note').textContent = '我的帖子 · 共 ' + d.total + ' 篇';
       if (!d.posts.length) {
-        listEl.innerHTML = '<div class="empty"><b>还没有发过帖子</b>去广场看看，或者直接写一篇。<div style="margin-top:16px"><a class="btn btn-primary" href="/new.html">写帖子</a></div></div>';
+        listEl.innerHTML = '<div class="empty"><b>还没有发过帖子</b>去论坛看看，或者直接写一篇。<div style="margin-top:16px"><a class="btn btn-primary" href="/new.html">写帖子</a></div></div>';
         return;
       }
       listEl.innerHTML = d.posts.map(card).join('');

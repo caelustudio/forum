@@ -35,7 +35,7 @@
     <div class="card">
       <div class="card-title">操作</div>
       <a class="btn btn-primary" href="/new.html" style="width:100%;margin-bottom:9px">写新帖子</a>
-      <a class="btn btn-ghost" href="/" style="width:100%">回到广场</a>
+      <a class="btn btn-ghost" href="/" style="width:100%">回到论坛</a>
     </div>
     <div class="card">
       <div class="card-title">作者</div>
@@ -48,7 +48,7 @@
   © 2026 Caelus Studio · <a href="https://www.caelus.top/">caelus.top</a>
 </footer>
 
-<script src="/assets/forum.js"></script>
+<script src="/assets/forum.js?v=20261004b"></script>
 <script>
 (function () {
   var id = new URLSearchParams(location.search).get('id') || '';
@@ -221,7 +221,7 @@
     Forum.api('/api/forum/post?' + p.toString()).then(function (d) {
       if (!d || !d.ok) {
         postEl.innerHTML = '<div class="empty"><b>' + Forum.esc((d && d.error) || '帖子不存在') + '</b>' +
-          '<a class="btn btn-ghost" href="/" style="margin-top:14px">回到广场</a></div>';
+          '<a class="btn btn-ghost" href="/" style="margin-top:14px">回到论坛</a></div>';
         Forum.q('#cmtBox').style.display = 'none';
         return;
       }
@@ -233,7 +233,7 @@
   }
 
   if (!id) {
-    postEl.innerHTML = '<div class="empty"><b>缺少帖子参数</b><a class="btn btn-ghost" href="/" style="margin-top:14px">回到广场</a></div>';
+    postEl.innerHTML = '<div class="empty"><b>缺少帖子参数</b><a class="btn btn-ghost" href="/" style="margin-top:14px">回到论坛</a></div>';
     Forum.q('#cmtBox').style.display = 'none';
     Forum.init({ active: 'index' });
   } else {
