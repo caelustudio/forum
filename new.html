@@ -26,7 +26,25 @@
           <input class="title-in" type="text" id="fTitle" maxlength="80" placeholder="标题：一句话说清这篇帖子在讲什么">
         </div>
         <div class="ed-field">
-          <textarea id="fBody" maxlength="8000" placeholder="正文…&#10;&#10;支持直接粘贴链接，会自动变成可点击的；换行会原样保留。"></textarea>
+          <div class="md-bar">
+            <div class="md-tabs">
+              <button type="button" class="on" id="tabWrite">编辑</button>
+              <button type="button" id="tabPreview">预览</button>
+            </div>
+            <span style="flex:1"></span>
+            <div class="md-tools" id="mdTools">
+              <button type="button" data-md="bold" title="粗体（Ctrl/⌘ + B）"><b>B</b></button>
+              <button type="button" data-md="italic" title="斜体（Ctrl/⌘ + I）"><i>I</i></button>
+              <button type="button" data-md="h2" title="标题">H</button>
+              <button type="button" data-md="quote" title="引用">❝</button>
+              <button type="button" data-md="list" title="无序列表">≡</button>
+              <button type="button" data-md="code" title="代码块">&#60;/&#62;</button>
+              <button type="button" data-md="link" title="链接（Ctrl/⌘ + K）">🔗</button>
+              <button type="button" data-md="image" title="图片">▣</button>
+            </div>
+          </div>
+          <textarea id="fBody" maxlength="8000" placeholder="正文，支持 Markdown：&#10;# 标题　**粗体**　*斜体*　- 列表　> 引用　`代码`&#10;[链接](https://…)　![图片](https://…)"></textarea>
+          <div class="md-preview" id="mdPreview" hidden></div>
         </div>
         <div class="ed-field">
           <input type="text" id="fTags" placeholder="话题标签（可选，用空格或逗号分隔，最多 3 个）">
@@ -46,6 +64,7 @@
       <div class="card-title">发帖提示</div>
       <ul style="margin:0;padding-left:18px;font-size:.78rem;line-height:1.9;color:var(--text-muted)">
         <li>标题尽量具体，方便别人一眼看懂。</li>
+        <li>正文支持 Markdown，点「预览」可看最终效果。</li>
         <li>话题标签最多 3 个，会显示在广场的「话题」里。</li>
         <li>发布后可以随时删除自己的帖子。</li>
         <li>请勿发布侵权、广告或违法违规内容。</li>
@@ -86,6 +105,63 @@
   });
   Forum.q('#fBody').addEventListener('keydown', function (e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') publish();
+  });
+
+  /* ---------- Markdown 编辑器：编辑 / 预览 + 工具栏 ---------- */
+  var ta = Forum.q('#fBody'), preview = Forum.q('#mdPreview');
+  var tabWrite = Forum.q('#tabWrite'), tabPreview = Forum.q('#tabPreview');
+  var mode = 'write';
+
+  function setMode(m) {
+    mode = m;
+    tabWrite.className = m === 'write' ? 'on' : '';
+    tabPreview.className = m === 'preview' ? 'on' : '';
+    preview.hidden = m !== 'preview';
+    ta.hidden = m === 'preview';
+    if (m === 'preview') {
+      preview.innerHTML = Forum.md(ta.value) || '<p class="md-empty">还没有内容，切回「编辑」写点什么吧。</p>';
+    } else {
+      ta.focus();
+    }
+  }
+  tabWrite.onclick = function () { setMode('write'); };
+  tabPreview.onclick = function () { setMode('preview'); };
+
+  function wrapSel(before, after, ph, block) {
+    var v = ta.value;
+    var s = ta.selectionStart, e = ta.selectionEnd;
+    var picked = v.slice(s, e);
+    if (block) { s = e = v.lastIndexOf('\n', s - 1) + 1; picked = ''; }
+    if (!picked) picked = ph;
+    ta.value = v.slice(0, s) + before + picked + after + v.slice(e);
+    ta.focus();
+    ta.selectionStart = s + before.length;
+    ta.selectionEnd = s + before.length + picked.length;
+    updateCounter();
+  }
+  var MD_ACT = {
+    bold: function () { wrapSel('**', '**', '粗体'); },
+    italic: function () { wrapSel('*', '*', '斜体'); },
+    h2: function () { wrapSel('## ', '', '小标题', true); },
+    quote: function () { wrapSel('> ', '', '引用内容', true); },
+    list: function () { wrapSel('- ', '', '列表项', true); },
+    code: function () { wrapSel('```\n', '\n```', '代码', true); },
+    link: function () { wrapSel('[', '](https://)', '链接文字'); },
+    image: function () { wrapSel('![', '](https://)', '图片说明'); }
+  };
+  [].forEach.call(document.querySelectorAll('#mdTools button'), function (b) {
+    b.onclick = function () {
+      if (mode === 'preview') setMode('write');
+      var fn = MD_ACT[b.getAttribute('data-md')];
+      if (fn) fn();
+    };
+  });
+  ta.addEventListener('keydown', function (e) {
+    if (!(e.ctrlKey || e.metaKey)) return;
+    var k = (e.key || '').toLowerCase();
+    if (k === 'b') { e.preventDefault(); MD_ACT.bold(); }
+    else if (k === 'i') { e.preventDefault(); MD_ACT.italic(); }
+    else if (k === 'k') { e.preventDefault(); MD_ACT.link(); }
   });
 
   Forum.q('#goLogin').onclick = function () { Forum.openLogin(); };

@@ -48,6 +48,129 @@
     }).join('');
   }
 
+  /* ---------- Markdown 渲染（自实现，无外部依赖；先转义再渲染，安全优先） ----------
+     支持：# 标题、**粗体**、*斜体*、~~删除线~~、`行内代码`、```围栏代码```、
+     - / 1. 列表、> 引用、--- 分割线、| 表格 |、[文字](链接)、![alt](图片)、裸链接、
+     单换行 → <br>，空行 → 段落。 */
+  var STASH_RE = /\u0001(\d+)\u0001/g;
+  function mdHref(u) {
+    u = String(u || '').trim();
+    return /^(https?:\/\/|mailto:)/i.test(u) ? u : '';
+  }
+  function mdCells(line) {
+    return String(line).replace(/^\s*\|/, '').replace(/\|\s*$/, '')
+      .split('|').map(function (c) { return c.trim(); });
+  }
+  function md(src) {
+    if (!src) return '';
+    var text = esc(String(src));
+    var stash = [];
+    function put(html) { stash.push(html); return '\u0001' + (stash.length - 1) + '\u0001'; }
+
+    // 围栏代码块（内容不参与后续解析）
+    text = text.replace(/```[a-zA-Z0-9+#-]*\n?([\s\S]*?)(?:```|$)/g, function (m, code) {
+      return '\n' + put('<pre class="md-pre"><code>' + code.replace(/\n+$/, '') + '</code></pre>') + '\n\n';
+    });
+    // 行内代码
+    text = text.replace(/`([^`\n]+)`/g, function (m, c) {
+      return put('<code class="md-icode">' + c + '</code>');
+    });
+    // 图片（必须先于链接解析）
+    text = text.replace(/!\[([^\]]*)\]\(([^\s)]+)\)/g, function (m, alt, u) {
+      var h = mdHref(u);
+      if (!h) return m;
+      return put('<img class="md-img" src="' + h + '" alt="' + alt + '" loading="lazy" referrerpolicy="no-referrer">');
+    });
+    // 链接
+    text = text.replace(/\[([^\]\n]+)\]\(([^\s)]+)\)/g, function (m, label, u) {
+      var h = mdHref(u);
+      if (!h) return m;
+      return put('<a class="md-a" href="' + h + '" target="_blank" rel="noopener noreferrer">' + label + '</a>');
+    });
+    // 裸链接
+    text = text.replace(/(https?:\/\/[^\s<>()\u0001]+)/g, function (u) {
+      return put('<a class="md-a" href="' + u + '" target="_blank" rel="noopener noreferrer">' + u + '</a>');
+    });
+    // 行内样式
+    text = text.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+    text = text.replace(/(^|[^*\w])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+    text = text.replace(/~~([^~\n]+)~~/g, '<del>$1</del>');
+
+    var lines = text.split('\n');
+    var out = [];
+    var buf = [];
+    function flush() {
+      if (!buf.length) return;
+      out.push('<p>' + buf.join('<br>') + '</p>');
+      buf = [];
+    }
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (!line) { flush(); continue; }
+      if (/^\u0001\d+\u0001$/.test(line)) { flush(); out.push(line); continue; }
+      if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(line)) { flush(); out.push('<hr class="md-hr">'); continue; }
+
+      var hm = /^(#{1,6})\s+(.+)$/.exec(line);
+      if (hm) {
+        flush();
+        var lv = hm[1].length;
+        out.push('<h' + lv + ' class="md-h md-h' + lv + '">' + hm[2].replace(/\s*#+\s*$/, '') + '</h' + lv + '>');
+        continue;
+      }
+
+      if (/^&gt;\s?/.test(line)) {
+        flush();
+        var quote = [];
+        while (i < lines.length && /^\s*&gt;\s?/.test(lines[i])) {
+          quote.push(lines[i].replace(/^\s*&gt;\s?/, '').trim());
+          i++;
+        }
+        i--;
+        out.push('<blockquote class="md-quote">' + quote.join('<br>') + '</blockquote>');
+        continue;
+      }
+
+      // 表格：本行含 |，下一行是 |---| 分隔行
+      var sep = (lines[i + 1] || '').trim();
+      if (line.indexOf('|') >= 0 && sep.indexOf('-') >= 0 && /^\|?[\s:|-]+\|[\s:|-]*$/.test(sep)) {
+        flush();
+        var head = mdCells(line);
+        i += 2;
+        var rows = [];
+        while (i < lines.length && lines[i].trim() && lines[i].indexOf('|') >= 0) {
+          rows.push(mdCells(lines[i]));
+          i++;
+        }
+        i--;
+        out.push('<div class="md-table-wrap"><table class="md-table"><thead><tr>' +
+          head.map(function (c) { return '<th>' + c + '</th>'; }).join('') + '</tr></thead><tbody>' +
+          rows.map(function (r) {
+            return '<tr>' + head.map(function (_, k) { return '<td>' + (r[k] || '') + '</td>'; }).join('') + '</tr>';
+          }).join('') + '</tbody></table></div>');
+        continue;
+      }
+
+      if (/^(?:[-*+]|\d+\.)\s+/.test(line)) {
+        flush();
+        var ordered = /^\d+\.\s+/.test(line);
+        var items = [];
+        while (i < lines.length && /^(?:[-*+]|\d+\.)\s+/.test(lines[i].trim())) {
+          items.push(lines[i].trim().replace(/^(?:[-*+]|\d+\.)\s+/, ''));
+          i++;
+        }
+        i--;
+        var tag = ordered ? 'ol' : 'ul';
+        out.push('<' + tag + ' class="md-list">' +
+          items.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</' + tag + '>');
+        continue;
+      }
+
+      buf.push(line);
+    }
+    flush();
+    return out.join('\n').replace(STASH_RE, function (m, n) { return stash[+n] || ''; });
+  }
+
   /* ---------- 令牌 ---------- */
   function token() { try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { return ''; } }
   function setToken(t) { try { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY); } catch (e) {} }
@@ -131,6 +254,10 @@
   function remove(kind, id) {
     return api('/api/forum/delete', authBody({ kind: kind, id: id }));
   }
+  /* ---------- 打开量上报（每次页面加载调用一次；postId 可空） ---------- */
+  function track(postId) {
+    try { api('/api/forum/view', { postId: postId || '' }).catch(function () {}); } catch (e) {}
+  }
 
   /* ---------- 主题 ---------- */
   function applyTheme(t) {
@@ -158,7 +285,7 @@
     var bar = document.createElement('header');
     bar.className = 'topbar';
     bar.innerHTML =
-      '<a class="tb-brand" href="/"><img src="/assets/favicon.png" alt=""><b>Caelus 论坛</b><span>Star ID 登录</span></a>' +
+      '<a class="tb-brand" href="/"><img src="/assets/favicon.png" alt=""><b>Caelus 论坛</b></a>' +
       '<nav class="tb-nav">' + nav + '</nav>' +
       '<div class="tb-search">' +
         '<svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>' +
@@ -296,6 +423,7 @@
           if (typeof opts.onLogin === 'function') opts.onLogin();
         });
         if (typeof opts.onReady === 'function') opts.onReady();
+        if (!opts.noTrack) track(opts.postId || '');
         return state.me;
       });
     });
@@ -306,8 +434,8 @@
     token: token, setToken: setToken, clearToken: clearToken,
     me: function () { return state.me; },
     refreshMe: refreshMe, login: login, logout: logout, okStart: okStart,
-    like: like, remove: remove, requireLogin: requireLogin, openLogin: openLogin,
-    esc: esc, linkify: linkify, timeAgo: timeAgo, avatarHtml: avatarHtml, tagsHtml: tagsHtml,
+    like: like, remove: remove, track: track, requireLogin: requireLogin, openLogin: openLogin,
+    esc: esc, linkify: linkify, md: md, timeAgo: timeAgo, avatarHtml: avatarHtml, tagsHtml: tagsHtml,
     q: q, init: init, renderRight: renderRight
   };
 })();

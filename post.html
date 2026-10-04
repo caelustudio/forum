@@ -70,10 +70,11 @@
         '<span class="pc-time">' + Forum.timeAgo(p.createdAt) + '</span>' +
       '</div>' +
       (p.tags && p.tags.length ? '<div class="tags" style="margin-top:14px">' + Forum.tagsHtml(p.tags) + '</div>' : '') +
-      '<div class="post-body">' + Forum.linkify(Forum.esc(p.body)) + '</div>' +
+      '<div class="post-body">' + Forum.md(p.body) + '</div>' +
       '<div class="content-bar">' +
         '<button class="like-btn' + (p.liked ? ' on' : '') + '" id="likePost">' + HEART + '<span>' + (p.liked ? '已赞' : '点赞') + ' ' + p.likes + '</span></button>' +
         '<span class="helper">' + p.comments + ' 条评论</span>' +
+        '<span class="helper">' + (p.views || 0) + ' 次阅读</span>' +
         '<span class="grow" style="flex:1"></span>' +
         (p.mine ? '<button class="btn btn-ghost" id="delPost" style="color:var(--danger)">删除帖子</button>' : '') +
       '</div>';
@@ -117,7 +118,7 @@
           '<span style="font-size:.72rem;color:var(--text-muted)">' + Forum.timeAgo(c.createdAt) + '</span>' +
         '</div>' +
         (c.replyToName ? '<div class="reply-ref">回复 <b>@' + Forum.esc(c.replyToName) + '</b></div>' : '') +
-        '<p class="cmt-body">' + Forum.linkify(Forum.esc(c.body)) + '</p>' +
+        '<div class="cmt-body">' + Forum.md(c.body) + '</div>' +
         '<div class="cmt-foot">' +
           '<button class="likeC' + (c.liked ? ' on' : '') + '">' + HEART + '<span>' + c.likes + '</span></button>' +
           '<button class="replyC">回复</button>' +
@@ -182,7 +183,7 @@
     }
     cmtFormEl.innerHTML =
       '<div class="reply-note" id="replyNote"></div>' +
-      '<textarea id="cmtInput" placeholder="说点什么…" style="min-height:100px"></textarea>' +
+      '<textarea id="cmtInput" placeholder="说点什么…（支持 Markdown）" style="min-height:100px"></textarea>' +
       '<div class="ed-foot">' +
         '<button class="btn btn-primary" id="cmtSend">发表评论</button>' +
         '<span class="helper">Ctrl / ⌘ + Enter 快速发表</span>' +
@@ -238,6 +239,7 @@
   } else {
     Forum.init({
       active: 'index',
+      postId: id,
       onReady: load,
       onLogin: function () { renderForm(); }
     });

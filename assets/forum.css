@@ -324,9 +324,77 @@ input, textarea, select { font-family: inherit; }
 }
 @media (max-width: 620px) {
   .topbar { padding: 10px 14px; gap: 10px; }
-  .tb-brand span { display: none; }
   .tb-search { order: 3; flex-basis: 100%; max-width: none; }
   .topbar { flex-wrap: wrap; }
   .me-chip b { display: none; }
   .pc-time { font-size: .7rem; }
+  .md-bar { flex-wrap: wrap; }
+}
+
+/* ===== Markdown 渲染（帖子正文 / 评论） ===== */
+.post-body, .cmt-body { white-space: normal; }
+.post-body > *:first-child, .cmt-body > *:first-child { margin-top: 0; }
+.post-body > *:last-child, .cmt-body > *:last-child { margin-bottom: 0; }
+.post-body p, .cmt-body p { margin: 0 0 .8em; }
+.post-body p:last-child, .cmt-body p:last-child { margin-bottom: 0; }
+.md-h {
+  font-weight: 500; -webkit-text-stroke: .3px currentColor; line-height: 1.45;
+  color: var(--text-primary); margin: 1.3em 0 .5em;
+}
+.md-h1 { font-size: 1.3rem; }
+.md-h2 { font-size: 1.15rem; }
+.md-h3 { font-size: 1.03rem; }
+.md-h4, .md-h5, .md-h6 { font-size: .95rem; }
+.md-quote {
+  margin: .9em 0; padding: .55em .9em; border-left: 2px solid var(--accent-line);
+  background: var(--input-bg); border-radius: 0 9px 9px 0; color: var(--text-muted);
+}
+.md-list { margin: .8em 0; padding-left: 1.4em; }
+.md-list li { margin: .26em 0; }
+.md-hr { border: 0; border-top: 1px solid var(--border-color); margin: 1.5em 0; }
+.md-icode {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .86em;
+  padding: .12em .38em; border-radius: 5px; background: var(--input-bg);
+  border: 1px solid var(--border-color);
+}
+.md-pre {
+  margin: .9em 0; padding: .8em 1em; border-radius: 11px; overflow-x: auto;
+  background: var(--input-bg); border: 1px solid var(--border-color);
+}
+.md-pre code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .82rem;
+  line-height: 1.65; color: var(--text-secondary); white-space: pre;
+}
+.md-a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+.md-img { display: block; max-width: 100%; border-radius: 10px; margin: .7em 0; }
+.md-table-wrap { overflow-x: auto; margin: .9em 0; }
+.md-table { border-collapse: collapse; width: 100%; font-size: .85rem; }
+.md-table th, .md-table td { border: 1px solid var(--border-color); padding: .42em .72em; text-align: left; }
+.md-table th { background: var(--input-bg); color: var(--text-primary); font-weight: 500; }
+.md-empty { font-size: .82rem; color: var(--text-muted); margin: 0; }
+
+/* ===== Markdown 编辑器：编辑 / 预览 + 工具栏 ===== */
+.md-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.md-tabs {
+  display: inline-flex; padding: 2px; border-radius: 9px;
+  background: var(--input-bg); border: 1px solid var(--border-color);
+}
+.md-tabs button {
+  border: 0; background: transparent; color: var(--text-muted); cursor: pointer;
+  font-family: inherit; font-size: .78rem; padding: .26rem .78rem; border-radius: 7px;
+  transition: all .18s;
+}
+.md-tabs button.on { background: var(--bg-card); color: var(--accent); }
+.md-tools { display: flex; gap: 2px; flex-wrap: wrap; }
+.md-tools button {
+  width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid transparent; background: transparent; color: var(--text-muted);
+  border-radius: 7px; cursor: pointer; font-family: inherit; font-size: .76rem;
+  transition: all .18s;
+}
+.md-tools button:hover { background: var(--input-bg); border-color: var(--border-color); color: var(--text-primary); }
+.md-preview {
+  min-height: 230px; padding: .8rem 1rem; border-radius: 11px;
+  border: 1px solid var(--border-color); background: var(--bg-card);
+  font-size: .9rem; line-height: 1.8; color: var(--text-secondary); overflow-wrap: break-word;
 }
