@@ -225,6 +225,11 @@ mark.hl {
 .who .sid { font-size: .7rem; color: var(--text-muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 /* ===== 主题标签条 ===== */
+/* ===== 行标签（分类 / 话题，避免两行混淆） ===== */
+.row-label {
+  flex: none; align-self: center; font-size: .72rem; color: var(--text-muted);
+  padding: .3rem .15rem .3rem 0; letter-spacing: .08em; user-select: none;
+}
 .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
 .chip {
   font-size: .78rem; padding: .3rem .7rem; border-radius: 999px; cursor: pointer;

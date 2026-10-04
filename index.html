@@ -8,7 +8,7 @@
 <link rel="icon" href="/assets/favicon.png" type="image/png">
 <link rel="canonical" href="https://forum.caelus.top/">
 <link rel="stylesheet" href="https://www.caelus.top/fonts/opposans40/result.css">
-<link rel="stylesheet" href="/assets/forum.css?v=20261004e">
+<link rel="stylesheet" href="/assets/forum.css?v=20261004f">
 <script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 </head>
 <body>
@@ -61,7 +61,7 @@
   © 2026 Caelus Studio · <a href="https://www.caelus.top/">caelus.top</a>
 </footer>
 
-<script src="/assets/forum.js?v=20261004e"></script>
+<script src="/assets/forum.js?v=20261004f"></script>
 <script>
 (function () {
   var sp = new URLSearchParams(location.search);
@@ -97,7 +97,7 @@
     var box = Forum.q('#cats');
     if (!box) return;
     var total = (cats || []).reduce(function (n, c) { return n + c.count; }, 0);
-    var html = '<button class="cat-chip' + (view.cat ? '' : ' on') + '" data-cat="">全部 <em>' + total + '</em></button>';
+    var html = '<span class="row-label">分类</span><button class="cat-chip' + (view.cat ? '' : ' on') + '" data-cat="">全部 <em>' + total + '</em></button>';
     (cats || []).forEach(function (c) {
       html += '<button class="cat-chip' + (view.cat === c.name ? ' on' : '') + '" data-cat="' + Forum.esc(c.name) + '">' +
         Forum.esc(c.name) + ' <em>' + c.count + '</em></button>';
@@ -113,7 +113,7 @@
   }
 
   function renderChips(tags) {
-    var html = '<button class="chip' + (view.tag ? '' : ' on') + '" data-tag="">全部</button>';
+    var html = '<span class="row-label">话题</span><button class="chip' + (view.tag ? '' : ' on') + '" data-tag="">全部</button>';
     tags.slice(0, 14).forEach(function (t) {
       html += '<button class="chip' + (view.tag === t.name ? ' on' : '') + '" data-tag="' + Forum.esc(t.name) + '">#' + Forum.esc(t.name) + ' <em style="font-style:normal;opacity:.55">' + t.count + '</em></button>';
     });
