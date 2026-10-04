@@ -277,6 +277,7 @@ mark.hl {
 .editor textarea { min-height: 230px; resize: vertical; line-height: 1.7; }
 .editor input.title-in { font-size: 1.02rem; font-weight: 500; -webkit-text-stroke: .3px currentColor; }
 .ed-field { margin-bottom: 12px; }
+.ed-label { font-size: .78rem; color: var(--text-muted); margin-bottom: 7px; }
 .ed-foot { display: flex; align-items: center; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
 .helper { font-size: .74rem; color: var(--text-muted); }
 
@@ -340,6 +341,59 @@ mark.hl {
   .pc-time { font-size: .7rem; }
   .md-bar { flex-wrap: wrap; }
 }
+
+/* ===== 自定义圆形光标（与主站一致） ===== */
+html, body { cursor: none; }
+a, button, .post-card, .chip, .tag, .me-chip, .theme-toggle, .card-title { cursor: none !important; }
+input, textarea, select, [contenteditable="true"] { cursor: auto !important; }
+.custom-cursor {
+  position: fixed; top: 0; left: 0; width: 20px; height: 20px;
+  border-radius: 50%; background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.3); box-shadow: 0 0 20px rgba(255,255,255,0.05);
+  pointer-events: none; z-index: 9999; transform: translate(-50%,-50%);
+  transition: width .2s, height .2s, background .2s, border-color .2s, opacity .2s;
+  opacity: 0; will-change: transform;
+}
+.custom-cursor.on { opacity: 1; }
+[data-theme="light"] .custom-cursor {
+  background: rgba(0,0,0,0.06); border-color: rgba(0,0,0,0.15); box-shadow: 0 0 20px rgba(0,0,0,0.03);
+}
+.custom-cursor.clicked { width: 8px; height: 8px; background: rgba(255,255,255,0.3); border-color: rgba(255,255,255,0.6); }
+[data-theme="light"] .custom-cursor.clicked { background: rgba(0,0,0,0.15); border-color: rgba(0,0,0,0.3); }
+.custom-cursor.hover { width: 28px; height: 28px; background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.15); }
+[data-theme="light"] .custom-cursor.hover { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.08); }
+/* 按下优先于悬停：否则点链接时被 .hover 覆盖，看不出按下反馈 */
+.custom-cursor.hover.clicked { width: 8px; height: 8px; }
+.custom-cursor.over-text { opacity: 0; }
+@media (pointer: coarse) {
+  .custom-cursor { display: none !important; }
+  html, body, a, button { cursor: auto !important; }
+}
+
+/* ===== 帖子分类 ===== */
+.cat-chips { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 9px; }
+.cat-chip {
+  border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-secondary);
+  border-radius: 999px; padding: .28rem .74rem; font-size: .8rem; cursor: pointer;
+  transition: all .2s; font-family: inherit;
+}
+.cat-chip:hover { border-color: var(--card-hover-border); color: var(--text-primary); }
+.cat-chip.on { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent); }
+.cat-chip em { font-style: normal; opacity: .55; margin-left: 4px; font-size: .72rem; }
+.cat-badge {
+  display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 6px;
+  font-size: .72rem; line-height: 1.7; background: var(--accent-soft); color: var(--accent);
+  border: 1px solid var(--accent-line); white-space: nowrap; flex: none;
+}
+.cat-picker { display: flex; gap: 7px; flex-wrap: wrap; }
+.cat-picker button {
+  border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-secondary);
+  border-radius: 999px; padding: .32rem .82rem; font-size: .82rem; cursor: pointer;
+  transition: all .2s; font-family: inherit;
+}
+.cat-picker button:hover { border-color: var(--card-hover-border); color: var(--text-primary); }
+.cat-picker button.on { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent); }
 
 /* ===== Markdown 渲染（帖子正文 / 评论） ===== */
 .post-body, .cmt-body { white-space: normal; }

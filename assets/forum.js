@@ -271,10 +271,54 @@
     try { api('/api/forum/view', { postId: postId || '' }).catch(function () {}); } catch (e) {}
   }
 
+  /* ---------- 自定义圆形光标（与主站一致） ---------- */
+  function initCursor() {
+    if (!window.matchMedia || window.matchMedia('(pointer: coarse)').matches) return;
+    if (q('#customCursor')) return;
+    var el = document.createElement('div');
+    el.className = 'custom-cursor';
+    el.id = 'customCursor';
+    document.body.appendChild(el);
+    var HOVER = 'a,button,.post-card,.chip,.tag,.me-chip,.theme-toggle,.card-title';
+    var TEXT = 'input,textarea,select,[contenteditable="true"]';
+    document.addEventListener('mousemove', function (e) {
+      el.style.left = e.clientX + 'px';
+      el.style.top = e.clientY + 'px';
+      if (!el.classList.contains('on')) el.classList.add('on');
+    }, { passive: true });
+    document.addEventListener('mousedown', function () { el.classList.add('clicked'); });
+    document.addEventListener('mouseup', function () { el.classList.remove('clicked'); });
+    // 在链接上按住再拖动会触发原生拖拽，此时浏览器不再派发 mouseup，
+    // 光标会一直卡在「按下」的小尺寸——用 dragend / pointercancel 兜底。
+    ['dragend', 'pointercancel'].forEach(function (t) {
+      document.addEventListener(t, function () { el.classList.remove('clicked'); }, true);
+    });
+    document.addEventListener('mouseleave', function () { el.classList.remove('on'); el.classList.remove('clicked'); });
+    window.addEventListener('blur', function () { el.classList.remove('clicked'); });
+    // 内容多为动态渲染，用事件委托而不是逐个绑定
+    document.addEventListener('mouseover', function (e) {
+      var t = e.target;
+      if (!t || !t.closest) return;
+      var overText = !!t.closest(TEXT);
+      el.classList.toggle('over-text', overText);
+      el.classList.toggle('hover', !overText && !!t.closest(HOVER));
+    }, { passive: true });
+  }
+
   /* ---------- 主题 ---------- */
+  // 图标与主站（caelus.top）保持一致：深色显示月亮、浅色显示太阳
+  var ICON_MOON = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+  var ICON_SUN = '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/>' +
+    '<path d="M12 4a8 8 0 0 0-4 15 8 8 0 0 0 4-15z" opacity="0.6"/>';
+  function updateThemeIcon() {
+    var icon = q('#themeIcon');
+    if (!icon) return;
+    icon.innerHTML = currentTheme() === 'dark' ? ICON_MOON : ICON_SUN;
+  }
   function applyTheme(t) {
     document.documentElement.setAttribute('data-theme', t);
     try { localStorage.setItem(THEME_KEY, t); } catch (e) {}
+    updateThemeIcon();
   }
   function currentTheme() {
     var t = 'dark';
@@ -327,12 +371,13 @@
         ? '<a class="btn btn-primary" href="/new.html">发帖</a>' +
           '<div class="me-chip" id="meChip" title="账号菜单">' + avatarHtml(u, 'sm') + '<b>' + esc(u.nickname || 'Star ID 用户') + '</b></div>'
         : '<button class="btn btn-primary" id="loginBtn">登录 / 注册</button>') +
-      '<button class="theme-toggle" id="themeBtn" title="切换主题"><svg viewBox="0 0 24 24"><path d="M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12zm0-16l2.4 3.2L18 4.1l-.9 3.7 3.8.6-2.6 2.7 2.6 2.7-3.8.6.9 3.7-3.6-1.1L12 20l-2.4-3.2L6 17.9l.9-3.7-3.8-.6L5.7 11 3.1 8.3l3.8-.6L6 4.1l3.6 1.1z"/></svg></button>';
+      '<button class="theme-toggle" id="themeBtn" title="切换深色/浅色模式" aria-label="切换深色/浅色模式"><svg id="themeIcon" viewBox="0 0 24 24"></svg></button>';
 
     var lb = q('#loginBtn');
     if (lb) lb.addEventListener('click', function () { openLogin(); });
     var tb = q('#themeBtn');
     if (tb) tb.addEventListener('click', toggleTheme);
+    updateThemeIcon();
     var chip = q('#meChip');
     if (chip) chip.addEventListener('click', function (e) {
       e.stopPropagation();
@@ -421,6 +466,7 @@
   function init(opts) {
     opts = opts || {};
     applyTheme(currentTheme());
+    initCursor();
     return handleOkReturn().then(function (r) {
       return refreshMe().then(function () {
         shell(opts.active);

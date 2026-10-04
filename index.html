@@ -8,7 +8,7 @@
 <link rel="icon" href="/assets/favicon.png" type="image/png">
 <link rel="canonical" href="https://forum.caelus.top/">
 <link rel="stylesheet" href="https://www.caelus.top/fonts/opposans40/result.css">
-<link rel="stylesheet" href="/assets/forum.css?v=20261004c">
+<link rel="stylesheet" href="/assets/forum.css?v=20261004d">
 <script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 </head>
 <body>
@@ -23,6 +23,7 @@
       <span class="count-note" id="countNote"></span>
       <a class="btn btn-ghost" href="/new.html">写帖子</a>
     </div>
+    <div class="cat-chips" id="cats"></div>
     <div class="chips" id="chips"></div>
     <div class="post-list" id="list">
       <div class="skel"></div><div class="skel"></div><div class="skel"></div>
@@ -60,12 +61,13 @@
   © 2026 Caelus Studio · <a href="https://www.caelus.top/">caelus.top</a>
 </footer>
 
-<script src="/assets/forum.js?v=20261004c"></script>
+<script src="/assets/forum.js?v=20261004d"></script>
 <script>
 (function () {
   var sp = new URLSearchParams(location.search);
   var view = {
     sort: sp.get('sort') === 'hot' ? 'hot' : 'new',
+    cat: sp.get('cat') || '',
     tag: sp.get('tag') || '',
     q: sp.get('q') || '',
     page: Math.max(1, parseInt(sp.get('page') || '1', 10) || 1)
@@ -76,6 +78,7 @@
   function url(o) {
     var p = new URLSearchParams();
     if (o.sort === 'hot') p.set('sort', 'hot');
+    if (o.cat) p.set('cat', o.cat);
     if (o.tag) p.set('tag', o.tag);
     if (o.q) p.set('q', o.q);
     if (o.page > 1) p.set('page', o.page);
@@ -87,6 +90,25 @@
     [].forEach.call(document.querySelectorAll('#seg button'), function (b) {
       b.className = b.getAttribute('data-sort') === view.sort ? 'on' : '';
       b.onclick = function () { view.page = 1; go(); };
+    });
+  }
+
+  function renderCats(cats) {
+    var box = Forum.q('#cats');
+    if (!box) return;
+    var total = (cats || []).reduce(function (n, c) { return n + c.count; }, 0);
+    var html = '<button class="cat-chip' + (view.cat ? '' : ' on') + '" data-cat="">全部 <em>' + total + '</em></button>';
+    (cats || []).forEach(function (c) {
+      html += '<button class="cat-chip' + (view.cat === c.name ? ' on' : '') + '" data-cat="' + Forum.esc(c.name) + '">' +
+        Forum.esc(c.name) + ' <em>' + c.count + '</em></button>';
+    });
+    box.innerHTML = html;
+    [].forEach.call(box.querySelectorAll('.cat-chip'), function (b) {
+      b.onclick = function () {
+        var v = b.getAttribute('data-cat');
+        view.cat = view.cat === v ? '' : v;
+        view.page = 1; go();
+      };
     });
   }
 
@@ -129,7 +151,8 @@
           (p.starId ? '<span class="sid">' + Forum.hl(p.starId, kw) + '</span>' : '') + '</div>' +
         '<span class="pc-time">' + Forum.timeAgo(p.createdAt) + '</span>' +
       '</div>' +
-      '<h3 class="pc-title">' + Forum.hl(p.title, kw) + '</h3>' +
+      '<h3 class="pc-title">' + (p.category ? '<span class="cat-badge">' + Forum.esc(p.category) + '</span>' : '') +
+        Forum.hl(p.title, kw) + '</h3>' +
       (p.excerpt ? '<p class="pc-excerpt">' + Forum.hl(p.excerpt, kw) + '</p>' : '') +
       (onlyFrom ? '<div class="match-note">命中' + from.join(' / ') +
         (p.matchText ? '：' + Forum.hl(p.matchText, kw) : '') + '</div>' : '') +
@@ -147,10 +170,12 @@
   function render(d) {
     meta.total = d.total; meta.size = d.size;
     renderSeg();
+    renderCats(d.cats || []);
     renderChips(d.tags || []);
     var note = Forum.q('#countNote');
     var bits = [];
     if (view.q) bits.push('搜索「' + view.q + '」');
+    if (view.cat) bits.push('分类：' + view.cat);
     if (view.tag) bits.push('#' + view.tag);
     bits.push('共 ' + d.total + ' 篇');
     note.textContent = bits.join(' · ');
@@ -167,9 +192,9 @@
     if (pages <= 1) { pager.innerHTML = ''; return; }
     pager.innerHTML =
       '<div style="display:flex;align-items:center;gap:12px;justify-content:center">' +
-        (view.page > 1 ? '<a class="btn btn-ghost" href="' + url({ sort: view.sort, tag: view.tag, q: view.q, page: view.page - 1 }) + '">上一页</a>' : '') +
+        (view.page > 1 ? '<a class="btn btn-ghost" href="' + url({ sort: view.sort, cat: view.cat, tag: view.tag, q: view.q, page: view.page - 1 }) + '">上一页</a>' : '') +
         '<span class="count-note">第 ' + view.page + ' / ' + pages + ' 页</span>' +
-        (view.page < pages ? '<a class="btn btn-ghost" href="' + url({ sort: view.sort, tag: view.tag, q: view.q, page: view.page + 1 }) + '">下一页</a>' : '') +
+        (view.page < pages ? '<a class="btn btn-ghost" href="' + url({ sort: view.sort, cat: view.cat, tag: view.tag, q: view.q, page: view.page + 1 }) + '">下一页</a>' : '') +
       '</div>';
   }
 
@@ -178,6 +203,7 @@
     listEl.innerHTML = '<div class="skel"></div><div class="skel"></div><div class="skel"></div>';
     var p = new URLSearchParams();
     p.set('sort', view.sort);
+    if (view.cat) p.set('cat', view.cat);
     if (view.tag) p.set('tag', view.tag);
     if (view.q) p.set('q', view.q);
     p.set('page', String(view.page));

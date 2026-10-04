@@ -6,7 +6,7 @@
 <title>写帖子 · Caelus 论坛</title>
 <link rel="icon" href="/assets/favicon.png" type="image/png">
 <link rel="stylesheet" href="https://www.caelus.top/fonts/opposans40/result.css">
-<link rel="stylesheet" href="/assets/forum.css?v=20261004c">
+<link rel="stylesheet" href="/assets/forum.css?v=20261004d">
 <script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 </head>
 <body>
@@ -22,6 +22,10 @@
         </div>
       </div>
       <div id="form" hidden>
+        <div class="ed-field">
+          <div class="ed-label">分类</div>
+          <div class="cat-picker" id="fCats"></div>
+        </div>
         <div class="ed-field">
           <input class="title-in" type="text" id="fTitle" maxlength="80" placeholder="标题：一句话说清这篇帖子在讲什么">
         </div>
@@ -65,6 +69,7 @@
       <ul style="margin:0;padding-left:18px;font-size:.78rem;line-height:1.9;color:var(--text-muted)">
         <li>标题尽量具体，方便别人一眼看懂。</li>
         <li>正文支持 Markdown，点「预览」可看最终效果。</li>
+        <li>分类决定帖子归到哪个板块，广场顶部可按分类筛选。</li>
         <li>话题标签最多 3 个，会显示在论坛的「话题」里。</li>
         <li>发布后可以随时删除自己的帖子。</li>
         <li>请勿发布侵权、广告或违法违规内容。</li>
@@ -77,7 +82,7 @@
   © 2026 Caelus Studio · <a href="https://www.caelus.top/">caelus.top</a>
 </footer>
 
-<script src="/assets/forum.js?v=20261004c"></script>
+<script src="/assets/forum.js?v=20261004d"></script>
 <script>
 (function () {
   var msg = Forum.q('#msg'), counter = Forum.q('#counter');
@@ -166,16 +171,39 @@
 
   Forum.q('#goLogin').onclick = function () { Forum.openLogin(); };
 
+  /* ---------- 分类选择 ---------- */
+  var catPick = '讨论';
+  function renderCats(cats) {
+    var box = Forum.q('#fCats');
+    if (!box) return;
+    var list = (cats && cats.length) ? cats.map(function (c) { return c.name; }) : ['讨论', '作品', '求助', '公告', '其他'];
+    if (list.indexOf(catPick) < 0) catPick = list[0];
+    box.innerHTML = list.map(function (n) {
+      return '<button type="button" data-cat="' + Forum.esc(n) + '" class="' + (n === catPick ? 'on' : '') + '">' + Forum.esc(n) + '</button>';
+    }).join('');
+    [].forEach.call(box.querySelectorAll('button'), function (b) {
+      b.onclick = function () {
+        catPick = b.getAttribute('data-cat');
+        [].forEach.call(box.querySelectorAll('button'), function (o) {
+          o.className = o === b ? 'on' : '';
+        });
+      };
+    });
+  }
+  Forum.api('/api/forum/list?size=1').then(function (d) { if (d && d.ok) renderCats(d.cats); })
+    .catch(function () { renderCats(null); });
+
   function publish() {
     var title = Forum.q('#fTitle').value.trim();
     var body = Forum.q('#fBody').value.trim();
     var tags = Forum.q('#fTags').value.trim();
+    var category = catPick;
     msg.className = 'msg err';
     if (title.length < 2) { msg.textContent = '标题太短了，至少写 2 个字'; return; }
     if (!body) { msg.textContent = '正文不能为空'; return; }
     var btn = Forum.q('#publish');
     btn.disabled = true; btn.textContent = '发布中…';
-    Forum.api('/api/forum/create', Forum.authBody({ title: title, body: body, tags: tags })).then(function (d) {
+    Forum.api('/api/forum/create', Forum.authBody({ title: title, body: body, tags: tags, category: category })).then(function (d) {
       btn.disabled = false; btn.textContent = '发布帖子';
       if (!d || !d.ok) { msg.textContent = (d && d.error) || '发布失败，请稍后重试'; return; }
       location.href = '/post.html?id=' + encodeURIComponent(d.post.id);
