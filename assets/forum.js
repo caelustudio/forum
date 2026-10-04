@@ -54,6 +54,14 @@
     var ch = String(u.nickname || u.author || '?').trim().charAt(0) || '?';
     return '<span class="' + cls + '">' + esc(ch) + '</span>';
   }
+  // 认证蓝 V：仅当接口返回 verified=true 时输出（名单在后端维护）
+  var V_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+    '<circle cx="12" cy="12" r="10" fill="#1d9bf0"/>' +
+    '<path d="M7.9 8.5l4.1 6.8 4.1-6.8" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+  function vBadge(u) {
+    return (u && u.verified) ? '<span class="vbadge" title="Caelus Studio 认证" aria-label="已认证">' + V_SVG + '</span>' : '';
+  }
   function tagsHtml(tags, plain) {
     return (tags || []).map(function (t) {
       return '<span class="tag' + (plain ? ' plain' : '') + '" data-tag="' + esc(t) + '">#' + esc(t) + '</span>';
@@ -369,7 +377,7 @@
     box.innerHTML =
       (u
         ? '<a class="btn btn-primary" href="/new.html">发帖</a>' +
-          '<div class="me-chip" id="meChip" title="账号菜单">' + avatarHtml(u, 'sm') + '<b>' + esc(u.nickname || 'Star ID 用户') + '</b></div>'
+          '<div class="me-chip" id="meChip" title="账号菜单">' + avatarHtml(u, 'sm') + vBadge(u) + '<b>' + esc(u.nickname || 'Star ID 用户') + '</b></div>'
         : '<button class="btn btn-primary" id="loginBtn">登录 / 注册</button>') +
       '<button class="theme-toggle" id="themeBtn" title="切换深色/浅色模式" aria-label="切换深色/浅色模式"><svg id="themeIcon" viewBox="0 0 24 24"></svg></button>';
 
@@ -389,7 +397,7 @@
         'border-radius:13px;padding:6px;box-shadow:var(--shadow-pop);min-width:168px;font-size:.82rem';
       m.innerHTML =
         '<div style="padding:9px 11px 7px;border-bottom:1px solid var(--border-color);margin-bottom:5px">' +
-          '<div style="font-size:.8rem">' + esc(u.nickname || 'Star ID 用户') + '</div>' +
+          '<div style="font-size:.8rem;display:flex;align-items:center;gap:5px">' + esc(u.nickname || 'Star ID 用户') + vBadge(u) + '</div>' +
           '<div style="font-size:.68rem;color:var(--text-muted);font-family:ui-monospace,Menlo,monospace">' + esc(u.starId || '') + '</div>' +
         '</div>' +
         '<a href="/mine.html" style="display:block;padding:8px 11px;border-radius:8px">我的帖子</a>' +
@@ -492,7 +500,7 @@
     me: function () { return state.me; },
     refreshMe: refreshMe, login: login, logout: logout, okStart: okStart,
     like: like, remove: remove, track: track, requireLogin: requireLogin, openLogin: openLogin,
-    esc: esc, linkify: linkify, md: md, hl: hl, timeAgo: timeAgo, avatarHtml: avatarHtml, tagsHtml: tagsHtml,
+    esc: esc, linkify: linkify, md: md, hl: hl, timeAgo: timeAgo, avatarHtml: avatarHtml, vBadge: vBadge, tagsHtml: tagsHtml,
     q: q, init: init, renderRight: renderRight
   };
 })();

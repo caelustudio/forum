@@ -215,6 +215,11 @@ mark.hl {
 }
 .av.sm { width: 22px; height: 22px; font-size: .68rem; }
 .av.lg { width: 38px; height: 38px; font-size: .92rem; }
+/* 认证蓝 V（跟在头像右侧） */
+.vbadge { display: inline-flex; flex: none; width: 15px; height: 15px; }
+.vbadge svg { width: 100%; height: 100%; display: block; }
+.av + .vbadge { margin-left: -3px; margin-right: -3px; }
+.av.lg + .vbadge { width: 17px; height: 17px; }
 .who { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .who b { font-weight: 400; font-size: .82rem; white-space: nowrap; }
 .who .sid { font-size: .7rem; color: var(--text-muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
