@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>写帖子 · Caelus 论坛</title>
+<link rel="icon" href="/assets/favicon.png" type="image/png">
+<link rel="stylesheet" href="https://www.caelus.top/fonts/opposans40/result.css">
+<link rel="stylesheet" href="/assets/forum.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body>
+<div class="wrap">
+  <div class="main">
+    <div class="card editor" id="editor">
+      <div class="card-title">写一篇帖子<span class="helper" id="whoami"></span></div>
+      <div id="needLogin" hidden>
+        <div class="empty" style="padding:26px 10px">
+          <b>先登录再发帖</b>
+          用 Star ID 或 OK 账号登录后就能发帖了。
+          <div style="margin-top:16px"><button class="btn btn-primary" id="goLogin">登录 / 注册</button></div>
+        </div>
+      </div>
+      <div id="form" hidden>
+        <div class="ed-field">
+          <input class="title-in" type="text" id="fTitle" maxlength="80" placeholder="标题：一句话说清这篇帖子在讲什么">
+        </div>
+        <div class="ed-field">
+          <textarea id="fBody" maxlength="8000" placeholder="正文…&#10;&#10;支持直接粘贴链接，会自动变成可点击的；换行会原样保留。"></textarea>
+        </div>
+        <div class="ed-field">
+          <input type="text" id="fTags" placeholder="话题标签（可选，用空格或逗号分隔，最多 3 个）">
+        </div>
+        <div class="ed-foot">
+          <button class="btn btn-primary" id="publish">发布帖子</button>
+          <a class="btn btn-ghost" href="/">取消</a>
+          <span class="helper" id="counter"></span>
+          <span class="msg" id="msg" style="margin:0"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <aside class="side">
+    <div class="card">
+      <div class="card-title">发帖提示</div>
+      <ul style="margin:0;padding-left:18px;font-size:.78rem;line-height:1.9;color:var(--text-muted)">
+        <li>标题尽量具体，方便别人一眼看懂。</li>
+        <li>话题标签最多 3 个，会显示在广场的「话题」里。</li>
+        <li>发布后可以随时删除自己的帖子。</li>
+        <li>请勿发布侵权、广告或违法违规内容。</li>
+      </ul>
+    </div>
+  </aside>
+</div>
+
+<footer class="foot">
+  © 2026 Caelus Studio · <a href="https://www.caelus.top/">caelus.top</a>
+</footer>
+
+<script src="/assets/forum.js"></script>
+<script>
+(function () {
+  var msg = Forum.q('#msg'), counter = Forum.q('#counter');
+
+  function showForm() {
+    var u = Forum.me();
+    if (!u) {
+      Forum.q('#needLogin').hidden = false;
+      Forum.q('#form').hidden = true;
+      return;
+    }
+    Forum.q('#needLogin').hidden = true;
+    Forum.q('#form').hidden = false;
+    Forum.q('#whoami').textContent = '以 ' + (u.nickname || 'Star ID 用户') + '（' + (u.starId || '') + '）的身份发布';
+    updateCounter();
+  }
+
+  function updateCounter() {
+    var t = Forum.q('#fTitle').value.length, b = Forum.q('#fBody').value.length;
+    counter.textContent = '标题 ' + t + '/80 · 正文 ' + b + '/8000';
+  }
+
+  ['#fTitle', '#fBody'].forEach(function (s) {
+    Forum.q(s).addEventListener('input', updateCounter);
+  });
+  Forum.q('#fBody').addEventListener('keydown', function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') publish();
+  });
+
+  Forum.q('#goLogin').onclick = function () { Forum.openLogin(); };
+
+  function publish() {
+    var title = Forum.q('#fTitle').value.trim();
+    var body = Forum.q('#fBody').value.trim();
+    var tags = Forum.q('#fTags').value.trim();
+    msg.className = 'msg err';
+    if (title.length < 2) { msg.textContent = '标题太短了，至少写 2 个字'; return; }
+    if (!body) { msg.textContent = '正文不能为空'; return; }
+    var btn = Forum.q('#publish');
+    btn.disabled = true; btn.textContent = '发布中…';
+    Forum.api('/api/forum/create', Forum.authBody({ title: title, body: body, tags: tags })).then(function (d) {
+      btn.disabled = false; btn.textContent = '发布帖子';
+      if (!d || !d.ok) { msg.textContent = (d && d.error) || '发布失败，请稍后重试'; return; }
+      location.href = '/post.html?id=' + encodeURIComponent(d.post.id);
+    }).catch(function () {
+      btn.disabled = false; btn.textContent = '发布帖子';
+      msg.textContent = '网络异常，请稍后重试';
+    });
+  }
+  Forum.q('#publish').onclick = publish;
+
+  Forum.init({
+    active: 'new',
+    onReady: function () {
+      showForm();
+      var p = new URLSearchParams(location.search);
+      if (p.get('title')) { Forum.q('#fTitle').value = p.get('title'); updateCounter(); }
+      if (Forum.me()) Forum.q('#fTitle').focus();
+    },
+    onLogin: showForm
+  });
+})();
+</script>
+</body>
+</html>

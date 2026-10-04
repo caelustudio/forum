@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>帖子 · Caelus 论坛</title>
+<meta name="description" content="Caelus 论坛帖子详情">
+<link rel="icon" href="/assets/favicon.png" type="image/png">
+<link rel="stylesheet" href="https://www.caelus.top/fonts/opposans40/result.css">
+<link rel="stylesheet" href="/assets/forum.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<style>
+  #cmtInput { min-height: 100px; }
+  .reply-note { display:flex; align-items:center; gap:8px; font-size:.76rem; color:var(--text-muted); margin-bottom:8px; }
+  .reply-note b { color: var(--accent); font-weight: 400; }
+  .reply-note button { border:0; background:transparent; color:var(--text-muted); cursor:pointer; font-size:.76rem; }
+  .reply-note button:hover { color: var(--danger); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="main">
+    <div class="card post-full" id="postBox">
+      <div class="skel" style="height:26px;margin-bottom:14px"></div>
+      <div class="skel" style="height:120px;border:0;background:transparent"></div>
+    </div>
+    <div class="card" id="cmtBox" style="margin-top:16px">
+      <div class="card-title">评论<span id="cmtCount"></span></div>
+      <div id="cmtList"><div class="helper">加载中…</div></div>
+      <div id="cmtForm" style="margin-top:16px"></div>
+    </div>
+  </div>
+
+  <aside class="side">
+    <div class="card">
+      <div class="card-title">操作</div>
+      <a class="btn btn-primary" href="/new.html" style="width:100%;margin-bottom:9px">写新帖子</a>
+      <a class="btn btn-ghost" href="/" style="width:100%">回到广场</a>
+    </div>
+    <div class="card">
+      <div class="card-title">作者</div>
+      <div id="authorBox" class="helper">—</div>
+    </div>
+  </aside>
+</div>
+
+<footer class="foot">
+  © 2026 Caelus Studio · <a href="https://www.caelus.top/">caelus.top</a>
+</footer>
+
+<script src="/assets/forum.js"></script>
+<script>
+(function () {
+  var id = new URLSearchParams(location.search).get('id') || '';
+  var postEl = Forum.q('#postBox');
+  var cmtListEl = Forum.q('#cmtList');
+  var cmtFormEl = Forum.q('#cmtForm');
+  var post = null, comments = [], replyTo = '';
+
+  var HEART = '<svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.3-8.5C1.2 9.2 3 5.9 6.3 5.3c2-.4 4 .5 5.7 2.6 1.7-2.1 3.7-3 5.7-2.6 3.3.6 5.1 3.9 3.6 7.2C19.5 16.4 12 21 12 21z"/></svg>';
+
+  function renderPost() {
+    var p = post;
+    document.title = p.title + ' · Caelus 论坛';
+    postEl.innerHTML =
+      '<h1>' + Forum.esc(p.title) + '</h1>' +
+      '<div class="pc-head">' +
+        '<div class="who">' + Forum.avatarHtml(p, 'lg') + '<b>' + Forum.esc(p.author) + '</b>' +
+          (p.starId ? '<span class="sid">' + Forum.esc(p.starId) + '</span>' : '') + '</div>' +
+        '<span class="pc-time">' + Forum.timeAgo(p.createdAt) + '</span>' +
+      '</div>' +
+      (p.tags && p.tags.length ? '<div class="tags" style="margin-top:14px">' + Forum.tagsHtml(p.tags) + '</div>' : '') +
+      '<div class="post-body">' + Forum.linkify(Forum.esc(p.body)) + '</div>' +
+      '<div class="content-bar">' +
+        '<button class="like-btn' + (p.liked ? ' on' : '') + '" id="likePost">' + HEART + '<span>' + (p.liked ? '已赞' : '点赞') + ' ' + p.likes + '</span></button>' +
+        '<span class="helper">' + p.comments + ' 条评论</span>' +
+        '<span class="grow" style="flex:1"></span>' +
+        (p.mine ? '<button class="btn btn-ghost" id="delPost" style="color:var(--danger)">删除帖子</button>' : '') +
+      '</div>';
+
+    [].forEach.call(postEl.querySelectorAll('.tag'), function (t) {
+      t.onclick = function () { location.href = '/?tag=' + encodeURIComponent(t.getAttribute('data-tag')); };
+    });
+    Forum.q('#likePost').onclick = function () {
+      if (!Forum.requireLogin('登录后就可以点赞了')) return;
+      var btn = Forum.q('#likePost');
+      btn.disabled = true;
+      Forum.like('post', p.id).then(function (d) {
+        btn.disabled = false;
+        if (!d || !d.ok) return;
+        p.liked = d.liked; p.likes = d.likes;
+        btn.className = 'like-btn' + (d.liked ? ' on' : '');
+        btn.querySelector('span').textContent = (d.liked ? '已赞' : '点赞') + ' ' + d.likes;
+      });
+    };
+    var del = Forum.q('#delPost');
+    if (del) del.onclick = function () {
+      if (!confirm('确定删除这篇帖子吗？删除后其他人将看不到它。')) return;
+      Forum.remove('post', p.id).then(function (d) {
+        if (d && d.ok) location.href = '/'; else alert((d && d.error) || '删除失败');
+      });
+    };
+
+    var ab = Forum.q('#authorBox');
+    ab.innerHTML = '<div class="who" style="margin-bottom:8px">' + Forum.avatarHtml(p, 'lg') +
+      '<div><div style="font-size:.86rem">' + Forum.esc(p.author) + '</div>' +
+      '<div class="sid" style="font-size:.7rem;color:var(--text-muted);font-family:ui-monospace,Menlo,monospace">' + Forum.esc(p.starId || '') + '</div></div></div>' +
+      '<div class="helper">发布于 ' + Forum.timeAgo(p.createdAt) + '</div>';
+  }
+
+  function cmtHtml(c) {
+    return '<div class="cmt" data-id="' + c.id + '">' +
+      Forum.avatarHtml(c) +
+      '<div class="cmt-main">' +
+        '<div class="who"><b>' + Forum.esc(c.author) + '</b>' +
+          (c.starId ? '<span class="sid">' + Forum.esc(c.starId) + '</span>' : '') +
+          '<span style="font-size:.72rem;color:var(--text-muted)">' + Forum.timeAgo(c.createdAt) + '</span>' +
+        '</div>' +
+        (c.replyToName ? '<div class="reply-ref">回复 <b>@' + Forum.esc(c.replyToName) + '</b></div>' : '') +
+        '<p class="cmt-body">' + Forum.linkify(Forum.esc(c.body)) + '</p>' +
+        '<div class="cmt-foot">' +
+          '<button class="likeC' + (c.liked ? ' on' : '') + '">' + HEART + '<span>' + c.likes + '</span></button>' +
+          '<button class="replyC">回复</button>' +
+          (c.mine ? '<button class="delC" style="color:var(--danger)">删除</button>' : '') +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function renderComments() {
+    Forum.q('#cmtCount').textContent = comments.length ? '（' + comments.length + '）' : '';
+    if (!comments.length) {
+      cmtListEl.innerHTML = '<div class="empty" style="padding:30px 10px"><b>还没有评论</b>来说两句吧。</div>';
+    } else {
+      cmtListEl.innerHTML = comments.map(cmtHtml).join('');
+      [].forEach.call(cmtListEl.querySelectorAll('.cmt'), function (el) {
+        var cid = el.getAttribute('data-id');
+        el.querySelector('.likeC').onclick = function () {
+          if (!Forum.requireLogin('登录后就可以点赞了')) return;
+          Forum.like('comment', cid).then(function (d) {
+            if (!d || !d.ok) return;
+            var b = el.querySelector('.likeC');
+            b.className = 'likeC' + (d.liked ? ' on' : '');
+            b.querySelector('span').textContent = d.likes;
+            comments.forEach(function (x) { if (x.id === cid) { x.liked = d.liked; x.likes = d.likes; } });
+          });
+        };
+        el.querySelector('.replyC').onclick = function () {
+          if (!Forum.requireLogin('登录后就可以参与讨论')) return;
+          var c = comments.filter(function (x) { return x.id === cid; })[0];
+          replyTo = cid;
+          setReplyNote(c.author);
+          var ta = Forum.q('#cmtInput');
+          if (ta) { ta.focus(); ta.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+        };
+        var dbtn = el.querySelector('.delC');
+        if (dbtn) dbtn.onclick = function () {
+          if (!confirm('确定删除这条评论吗？')) return;
+          Forum.remove('comment', cid).then(function (d) {
+            if (d && d.ok) { comments = comments.filter(function (x) { return x.id !== cid; }); renderComments(); }
+            else alert((d && d.error) || '删除失败');
+          });
+        };
+      });
+    }
+  }
+
+  function setReplyNote(name) {
+    var n = Forum.q('#replyNote');
+    if (!n) return;
+    n.innerHTML = '正在回复 <b>@' + Forum.esc(name) + '</b> <button id="cancelReply">取消</button>';
+    Forum.q('#cancelReply').onclick = function () { replyTo = ''; n.innerHTML = ''; };
+  }
+
+  function renderForm() {
+    if (!Forum.me()) {
+      cmtFormEl.innerHTML = '<div class="empty" style="padding:22px 10px"><b>登录后参与讨论</b>' +
+        '用 Star ID 或 OK 账号登录即可发表评论。<br><br>' +
+        '<button class="btn btn-primary" id="cmtLogin">登录 / 注册</button></div>';
+      Forum.q('#cmtLogin').onclick = function () { Forum.openLogin(); };
+      return;
+    }
+    cmtFormEl.innerHTML =
+      '<div class="reply-note" id="replyNote"></div>' +
+      '<textarea id="cmtInput" placeholder="说点什么…" style="min-height:100px"></textarea>' +
+      '<div class="ed-foot">' +
+        '<button class="btn btn-primary" id="cmtSend">发表评论</button>' +
+        '<span class="helper">Ctrl / ⌘ + Enter 快速发表</span>' +
+        '<span class="msg" id="cmtMsg" style="margin:0"></span>' +
+      '</div>';
+    var ta = Forum.q('#cmtInput');
+    ta.addEventListener('keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') send();
+    });
+    Forum.q('#cmtSend').onclick = send;
+    function send() {
+      var text = ta.value.trim();
+      var msg = Forum.q('#cmtMsg');
+      if (!text) { msg.className = 'msg err'; msg.textContent = '评论不能为空'; return; }
+      var btn = Forum.q('#cmtSend');
+      btn.disabled = true; btn.textContent = '发表中…';
+      Forum.api('/api/forum/comment', Forum.authBody({ postId: id, body: text, replyTo: replyTo })).then(function (d) {
+        btn.disabled = false; btn.textContent = '发表评论';
+        if (!d || !d.ok) { msg.className = 'msg err'; msg.textContent = (d && d.error) || '发表失败'; return; }
+        comments.push(d.comment);
+        replyTo = '';
+        ta.value = '';
+        renderComments();
+        renderForm();
+      }).catch(function () {
+        btn.disabled = false; btn.textContent = '发表评论';
+        msg.className = 'msg err'; msg.textContent = '网络异常，请稍后重试';
+      });
+    }
+  }
+
+  function load() {
+    var p = new URLSearchParams({ id: id });
+    if (Forum.token()) p.set('token', Forum.token());
+    Forum.api('/api/forum/post?' + p.toString()).then(function (d) {
+      if (!d || !d.ok) {
+        postEl.innerHTML = '<div class="empty"><b>' + Forum.esc((d && d.error) || '帖子不存在') + '</b>' +
+          '<a class="btn btn-ghost" href="/" style="margin-top:14px">回到广场</a></div>';
+        Forum.q('#cmtBox').style.display = 'none';
+        return;
+      }
+      post = d.post; comments = d.comments || [];
+      renderPost(); renderComments(); renderForm();
+    }).catch(function () {
+      postEl.innerHTML = '<div class="empty"><b>网络异常</b>请稍后刷新重试。</div>';
+    });
+  }
+
+  if (!id) {
+    postEl.innerHTML = '<div class="empty"><b>缺少帖子参数</b><a class="btn btn-ghost" href="/" style="margin-top:14px">回到广场</a></div>';
+    Forum.q('#cmtBox').style.display = 'none';
+    Forum.init({ active: 'index' });
+  } else {
+    Forum.init({
+      active: 'index',
+      onReady: load,
+      onLogin: function () { renderForm(); }
+    });
+  }
+})();
+</script>
+</body>
+</html>
