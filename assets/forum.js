@@ -20,6 +20,18 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
+  // 搜索关键词高亮：先按原文切段，再逐段转义（避免破坏 HTML）
+  function hl(text, kw) {
+    var s = String(text == null ? '' : text);
+    var k = String(kw == null ? '' : kw);
+    if (!k) return esc(s);
+    var low = s.toLowerCase(), lk = k.toLowerCase(), out = '', i = 0, j;
+    while ((j = low.indexOf(lk, i)) >= 0) {
+      out += esc(s.slice(i, j)) + '<mark class="hl">' + esc(s.slice(j, j + k.length)) + '</mark>';
+      i = j + k.length;
+    }
+    return out + esc(s.slice(i));
+  }
   function linkify(escaped) {
     return String(escaped || '').replace(/(https?:\/\/[^\s<]+)/g, function (u) {
       return '<a href="' + u + '" target="_blank" rel="noopener noreferrer">' + u + '</a>';
@@ -434,7 +446,7 @@
     me: function () { return state.me; },
     refreshMe: refreshMe, login: login, logout: logout, okStart: okStart,
     like: like, remove: remove, track: track, requireLogin: requireLogin, openLogin: openLogin,
-    esc: esc, linkify: linkify, md: md, timeAgo: timeAgo, avatarHtml: avatarHtml, tagsHtml: tagsHtml,
+    esc: esc, linkify: linkify, md: md, hl: hl, timeAgo: timeAgo, avatarHtml: avatarHtml, tagsHtml: tagsHtml,
     q: q, init: init, renderRight: renderRight
   };
 })();

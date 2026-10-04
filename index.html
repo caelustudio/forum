@@ -8,7 +8,7 @@
 <link rel="icon" href="/assets/favicon.png" type="image/png">
 <link rel="canonical" href="https://forum.caelus.top/">
 <link rel="stylesheet" href="https://www.caelus.top/fonts/opposans40/result.css">
-<link rel="stylesheet" href="/assets/forum.css">
+<link rel="stylesheet" href="/assets/forum.css?v=20261004c">
 <script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 </head>
 <body>
@@ -60,7 +60,7 @@
   © 2026 Caelus Studio · <a href="https://www.caelus.top/">caelus.top</a>
 </footer>
 
-<script src="/assets/forum.js?v=20261004b"></script>
+<script src="/assets/forum.js?v=20261004c"></script>
 <script>
 (function () {
   var sp = new URLSearchParams(location.search);
@@ -115,14 +115,24 @@
   }
 
   function card(p) {
+    var kw = view.q;
+    var m = p.matchIn || [];
+    var from = [];
+    if (kw) {
+      if (m.indexOf('comment') >= 0) from.push('评论');
+      if (m.indexOf('tag') >= 0) from.push('标签');
+    }
+    var onlyFrom = from.length && m.indexOf('title') < 0 && m.indexOf('body') < 0;
     return '<a class="post-card" href="/post.html?id=' + encodeURIComponent(p.id) + '">' +
       '<div class="pc-head">' +
-        '<div class="who">' + Forum.avatarHtml(p) + '<b>' + Forum.esc(p.author) + '</b>' +
-          (p.starId ? '<span class="sid">' + Forum.esc(p.starId) + '</span>' : '') + '</div>' +
+        '<div class="who">' + Forum.avatarHtml(p) + '<b>' + Forum.hl(p.author, kw) + '</b>' +
+          (p.starId ? '<span class="sid">' + Forum.hl(p.starId, kw) + '</span>' : '') + '</div>' +
         '<span class="pc-time">' + Forum.timeAgo(p.createdAt) + '</span>' +
       '</div>' +
-      '<h3 class="pc-title">' + Forum.esc(p.title) + '</h3>' +
-      (p.excerpt ? '<p class="pc-excerpt">' + Forum.esc(p.excerpt) + '</p>' : '') +
+      '<h3 class="pc-title">' + Forum.hl(p.title, kw) + '</h3>' +
+      (p.excerpt ? '<p class="pc-excerpt">' + Forum.hl(p.excerpt, kw) + '</p>' : '') +
+      (onlyFrom ? '<div class="match-note">命中' + from.join(' / ') +
+        (p.matchText ? '：' + Forum.hl(p.matchText, kw) : '') + '</div>' : '') +
       '<div class="pc-foot">' +
         '<div class="tags">' + Forum.tagsHtml(p.tags) + '</div>' +
         '<div class="pc-stats">' +
