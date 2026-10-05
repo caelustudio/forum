@@ -324,7 +324,7 @@ b + .vbadge { margin-left: -4px; margin-right: -4px; }
 .ok-btn:hover { border-color: var(--accent-line); }
 .ok-btn img { height: 17px; width: auto; border-radius: 4px; }
 .ok-btn img.gslogo { height: 19px; width: auto; border-radius: 0; }
-.ok-btn img.oklogo { height: 15px; width: auto; border-radius: 0; filter: invert(1) brightness(1.5); }
+.ok-btn img.oklogo { height: 12px; width: auto; border-radius: 0; filter: invert(1) brightness(1.5); }
 [data-theme="light"] .ok-btn img.oklogo { filter: none; }
 .divider { display: flex; align-items: center; gap: 10px; margin: 16px 0 12px; color: var(--text-muted); font-size: .72rem; }
 .divider::before, .divider::after { content: ''; flex: 1 1 auto; height: 1px; background: var(--border-color); }
