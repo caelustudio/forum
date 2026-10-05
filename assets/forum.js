@@ -223,6 +223,16 @@
       return state.me;
     }).catch(function () { state.ready = true; return null; });
   }
+  // 换头像后同步本地状态 + 顶栏头像（不重新请求接口）
+  function setAvatar(url) {
+    if (!state.me) return;
+    state.me.avatar = url || '';
+    var chip = document.getElementById('meChip');
+    if (!chip) return;
+    var fresh = document.createElement('span');
+    fresh.innerHTML = avatarHtml(state.me, 'sm');
+    if (fresh.firstChild && chip.firstChild) chip.replaceChild(fresh.firstChild, chip.firstChild);
+  }
   function login(email, password) {
     return api('/api/auth/login', { email: email, password: password }).then(function (d) {
       if (d && d.ok && d.token) { setToken(d.token); state.me = d.user || null; }
@@ -545,6 +555,7 @@
     token: token, setToken: setToken, clearToken: clearToken,
     me: function () { return state.me; },
     refreshMe: refreshMe, login: login, logout: logout, okStart: okStart, gsStart: gsStart,
+    setAvatar: setAvatar,
     follow: follow, followlist: followlist,
     like: like, remove: remove, track: track, requireLogin: requireLogin, openLogin: openLogin,
     esc: esc, linkify: linkify, md: md, hl: hl, timeAgo: timeAgo, avatarHtml: avatarHtml, vBadge: vBadge, tagsHtml: tagsHtml,

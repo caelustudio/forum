@@ -531,3 +531,16 @@ input, textarea, select, [contenteditable="true"] { cursor: auto !important; }
   .profile-banner { flex-wrap: wrap; padding: 20px 18px; }
   .profile-banner .grow { display: none; }
 }
+
+/* ---------- 个人主页：更换头像 + 提示条 ---------- */
+.pf-ava-wrap { position: relative; flex: none; display: inline-block; line-height: 0; cursor: pointer; border-radius: 50%; }
+.pf-ava-wrap .pf-ava { display: block; }
+.pf-ava-wrap .pf-ava-edit {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 26px; border-radius: 0 0 999px 999px;
+  background: rgba(0, 0, 0, .5); color: #fff; display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity .15s;
+}
+.pf-ava-wrap:hover .pf-ava-edit { opacity: 1; }
+.pf-ava-wrap .pf-ava-edit svg { width: 15px; height: 15px; fill: currentColor; }
+.pf-tip { min-height: 17px; margin: -4px 0 8px; font-size: .76rem; color: #e5484d; }
+.pf-tip.ok { color: #2ea043; }

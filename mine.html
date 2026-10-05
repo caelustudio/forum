@@ -6,13 +6,15 @@
 <title>个人主页 · Caelus 论坛</title>
 <link rel="icon" href="/assets/favicon.png" type="image/png">
 <link rel="stylesheet" href="https://www.caelus.top/fonts/opposans40/result.css">
-<link rel="stylesheet" href="/assets/forum.css?v=20261005b">
+<link rel="stylesheet" href="/assets/forum.css?v=20261005c">
 <script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 </head>
 <body>
 <div class="wrap single">
   <div class="main">
     <div id="banner" class="profile-banner"><div class="helper" style="color:rgba(255,255,255,.75)">加载中…</div></div>
+    <div class="pf-tip" id="pfTip"></div>
+    <input type="file" id="avaFile" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
 
     <div class="pf-tabs" id="tabs" style="display:none">
       <button data-tab="posts" class="on">我的帖子</button>
@@ -29,7 +31,7 @@
   © 2026 Caelus Studio · <a href="https://www.caelus.top/">caelus.top</a> · <a href="/rules.html">论坛使用协议</a>
 </footer>
 
-<script src="/assets/forum.js?v=20261005b"></script>
+<script src="/assets/forum.js?v=20261005c"></script>
 <script>
 (function () {
   var listEl = Forum.q('#list'), peopleEl = Forum.q('#people'),
@@ -73,9 +75,11 @@
       Forum.q('#bLogin').onclick = function () { Forum.openLogin(); };
       return;
     }
-    var ava = u.avatar
+    var inner = u.avatar
       ? '<img class="pf-ava" src="' + Forum.esc(u.avatar) + '" alt="">'
       : '<span class="pf-ava">' + Forum.esc(String(u.nickname || u.starId || '?').trim().charAt(0) || '?') + '</span>';
+    var ava = '<span class="pf-ava-wrap" id="avaEdit" title="点击更换头像">' + inner +
+      '<i class="pf-ava-edit">' + CAM_SVG + '</i></span>';
     var days = '';
     if (u.createdAt) {
       var n = Math.max(1, Math.floor((Date.now() - u.createdAt) / 86400000));
@@ -95,6 +99,57 @@
       '<span class="grow"></span>' +
       '<a class="pf-btn" href="/new.html">写帖子</a>' +
       '<a class="pf-btn ghost" href="https://www.caelus.top/account/">账号中心</a>';
+    var ed = Forum.q('#avaEdit');
+    if (ed) ed.onclick = pickAvatar;
+  }
+
+  /* ---------- 更换头像 ---------- */
+  var CAM_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1.5 2H20a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h3.5L9 3zm3 5.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/></svg>';
+  function tip(msg, ok) {
+    var el = document.getElementById('pfTip');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.className = 'pf-tip' + (ok ? ' ok' : '');
+    clearTimeout(tip._t);
+    if (msg) tip._t = setTimeout(function () { el.textContent = ''; el.className = 'pf-tip'; }, 2600);
+  }
+  function pickAvatar() {
+    var f = document.getElementById('avaFile');
+    if (!f) return;
+    f.value = '';
+    f.click();
+  }
+  // 本地裁成正方形 + 缩到 256×256 再传，别把原图直接丢给后端
+  function handleAvatarFile(file) {
+    if (!file) return;
+    if (!/^image\//.test(file.type || '')) { tip('请选择图片文件'); return; }
+    tip('正在处理图片…', true);
+    var fr = new FileReader();
+    fr.onload = function () {
+      var img = new Image();
+      img.onload = function () {
+        var S = 256;
+        var cv = document.createElement('canvas');
+        cv.width = cv.height = S;
+        var ctx = cv.getContext('2d');
+        var side = Math.min(img.width, img.height);
+        if (!side) { tip('图片读取失败，请换一张'); return; }
+        ctx.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, S, S);
+        var url = cv.toDataURL('image/png');
+        if (url.length > 1600000) url = cv.toDataURL('image/jpeg', 0.88);
+        Forum.api('/api/auth/avatar', Forum.authBody({ data: url })).then(function (r) {
+          if (r && r.ok) {
+            Forum.setAvatar(r.user && r.user.avatar);
+            renderBanner();
+            tip('头像已更新', true);
+          } else tip((r && r.error) || '上传失败，请稍后再试');
+        })['catch'](function () { tip('网络异常，请稍后再试'); });
+      };
+      img.onerror = function () { tip('图片读取失败，请换一张'); };
+      img.src = fr.result;
+    };
+    fr.onerror = function () { tip('图片读取失败，请换一张'); };
+    fr.readAsDataURL(file);
   }
 
   /* ---------- 关注 / 粉丝 ---------- */
@@ -174,6 +229,7 @@
   [].forEach.call(tabsEl.querySelectorAll('button'), function (b) {
     b.addEventListener('click', function () { switchTab(b.getAttribute('data-tab')); });
   });
+  Forum.q('#avaFile').addEventListener('change', function () { handleAvatarFile(this.files && this.files[0]); });
 
   function load() {
     renderBanner();
