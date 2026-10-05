@@ -7,7 +7,7 @@
 <meta name="description" content="Caelus 论坛帖子详情">
 <link rel="icon" href="/assets/favicon.png" type="image/png">
 <link rel="stylesheet" href="https://www.caelus.top/fonts/opposans40/result.css">
-<link rel="stylesheet" href="/assets/forum.css?v=20261004g">
+<link rel="stylesheet" href="/assets/forum.css?v=20261004h">
 <script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <style>
   #cmtInput { min-height: 100px; }
@@ -48,7 +48,7 @@
   © 2026 Caelus Studio · <a href="https://www.caelus.top/">caelus.top</a>
 </footer>
 
-<script src="/assets/forum.js?v=20261004g"></script>
+<script src="/assets/forum.js?v=20261004h"></script>
 <script>
 (function () {
   var id = new URLSearchParams(location.search).get('id') || '';
@@ -104,9 +104,23 @@
     };
 
     var ab = Forum.q('#authorBox');
-    ab.innerHTML = '<div class="who" style="margin-bottom:8px">' + Forum.avatarHtml(p, 'lg') + '<div><div style="font-size:.86rem">' + Forum.esc(p.author) +  + Forum.vBadge(p) + '</div>' +
-      '<div class="sid" style="font-size:.7rem;color:var(--text-muted);font-family:ui-monospace,Menlo,monospace">' + Forum.esc(p.starId || '') + '</div></div></div>' +
+    var pFollow = (!p.mine && Forum.me() && p.starId)
+      ? '<button class="follow-btn' + (p.isFollowing ? ' on' : '') + '" data-sid="' + Forum.esc(p.starId) + '">' + (p.isFollowing ? '已关注' : '+ 关注') + '</button>'
+      : '';
+    ab.innerHTML = '<div class="who" style="margin-bottom:8px">' + Forum.avatarHtml(p, 'lg') + '<div><div style="font-size:.86rem">' + Forum.esc(p.author) + Forum.vBadge(p) + '</div>' +
+      '<div class="sid" style="font-size:.7rem;color:var(--text-muted);font-family:ui-monospace,Menlo,monospace">' + Forum.esc(p.starId || '') + '</div></div>' + pFollow + '</div>' +
       '<div class="helper">发布于 ' + Forum.timeAgo(p.createdAt) + '</div>';
+    var pfb = ab.querySelector('.follow-btn');
+    if (pfb) pfb.onclick = function () {
+      if (!Forum.requireLogin('登录后就可以关注别人')) return;
+      var on = pfb.classList.contains('on');
+      Forum.follow(pfb.getAttribute('data-sid'), on ? 'unfollow' : 'follow').then(function (d) {
+        if (!d || !d.ok) { alert((d && d.error) || '操作失败，请稍后重试'); return; }
+        pfb.classList.toggle('on', d.following);
+        pfb.textContent = d.following ? '已关注' : '+ 关注';
+        p.isFollowing = d.following;
+      });
+    };
   }
 
   function cmtHtml(c) {
@@ -114,6 +128,7 @@
       Forum.avatarHtml(c) + '<div class="cmt-main">' +
         '<div class="who"><b>' + Forum.esc(c.author) + '</b>' + Forum.vBadge(c) +
           (c.starId ? '<span class="sid">' + Forum.esc(c.starId) + '</span>' : '') +
+          (!c.mine && c.starId && Forum.me() ? '<button class="follow-btn sm' + (c.isFollowing ? ' on' : '') + '" data-sid="' + Forum.esc(c.starId) + '">' + (c.isFollowing ? '已关注' : '+ 关注') + '</button>' : '') +
           '<span style="font-size:.72rem;color:var(--text-muted)">' + Forum.timeAgo(c.createdAt) + '</span>' +
         '</div>' +
         (c.replyToName ? '<div class="reply-ref">回复 <b>@' + Forum.esc(c.replyToName) + '</b></div>' : '') +
@@ -152,6 +167,17 @@
           setReplyNote(c.author);
           var ta = Forum.q('#cmtInput');
           if (ta) { ta.focus(); ta.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+        };
+        var fbtn = el.querySelector('.follow-btn');
+        if (fbtn) fbtn.onclick = function () {
+          if (!Forum.requireLogin('登录后就可以关注别人')) return;
+          var on = fbtn.classList.contains('on');
+          Forum.follow(fbtn.getAttribute('data-sid'), on ? 'unfollow' : 'follow').then(function (d) {
+            if (!d || !d.ok) { alert((d && d.error) || '操作失败，请稍后重试'); return; }
+            fbtn.classList.toggle('on', d.following);
+            fbtn.textContent = d.following ? '已关注' : '+ 关注';
+            comments.forEach(function (x) { if (x.id === cid) x.isFollowing = d.following; });
+          });
         };
         var dbtn = el.querySelector('.delC');
         if (dbtn) dbtn.onclick = function () {

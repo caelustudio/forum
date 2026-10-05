@@ -6,7 +6,7 @@
 <title>我的帖子 · Caelus 论坛</title>
 <link rel="icon" href="/assets/favicon.png" type="image/png">
 <link rel="stylesheet" href="https://www.caelus.top/fonts/opposans40/result.css">
-<link rel="stylesheet" href="/assets/forum.css?v=20261004g">
+<link rel="stylesheet" href="/assets/forum.css?v=20261004h">
 <script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 </head>
 <body>
@@ -25,6 +25,10 @@
       <div class="card-title">账号</div>
       <div id="meBox" class="helper">加载中…</div>
     </div>
+    <div class="card" id="followCard" style="display:none">
+      <div class="card-title">关注</div>
+      <div id="followBox" class="helper">加载中…</div>
+    </div>
   </aside>
 </div>
 
@@ -32,7 +36,7 @@
   © 2026 Caelus Studio · <a href="https://www.caelus.top/">caelus.top</a>
 </footer>
 
-<script src="/assets/forum.js?v=20261004g"></script>
+<script src="/assets/forum.js?v=20261004h"></script>
 <script>
 (function () {
   var listEl = Forum.q('#list');
@@ -62,13 +66,42 @@
     var box = Forum.q('#meBox');
     if (!u) { box.innerHTML = '<button class="btn btn-primary" id="mLogin" style="width:100%">登录 / 注册</button>'; Forum.q('#mLogin').onclick = function () { Forum.openLogin(); }; return; }
     box.innerHTML =
-      '<div class="who" style="margin-bottom:6px">' + Forum.avatarHtml(u, 'lg') + '<div><div style="font-size:.86rem">' + Forum.esc(u.nickname || 'Star ID 用户') +  + Forum.vBadge(u) + '</div>' +
+      '<div class="who" style="margin-bottom:6px">' + Forum.avatarHtml(u, 'lg') + '<div><div style="font-size:.86rem">' + Forum.esc(u.nickname || 'Star ID 用户') + Forum.vBadge(u) + '</div>' +
         '<div style="font-size:.7rem;color:var(--text-muted);font-family:ui-monospace,Menlo,monospace">' + Forum.esc(u.starId || '') + '</div></div></div>' +
       '<a class="btn btn-ghost" href="https://www.caelus.top/account/" style="width:100%;margin-top:10px">账号中心</a>';
   }
 
+  function renderFollow() {
+    var card = Forum.q('#followCard'), box = Forum.q('#followBox');
+    if (!Forum.me()) { card.style.display = 'none'; return; }
+    card.style.display = '';
+    Forum.followlist().then(function (d) {
+      if (!d || !d.ok) { box.textContent = '加载失败，请刷新重试'; return; }
+      var item = function (x, canUnfollow) {
+        return '<div class="who" style="margin-bottom:8px">' + Forum.avatarHtml(x, 'sm') +
+          '<div style="min-width:0"><div style="font-size:.8rem">' + Forum.esc(x.nickname || '') + Forum.vBadge(x) + '</div>' +
+          '<div class="sid" style="font-size:.68rem">' + Forum.esc(x.starId || '') + '</div></div>' +
+          (canUnfollow && x.starId ? '<button class="follow-btn sm on" data-sid="' + Forum.esc(x.starId) + '" style="margin-left:auto">已关注</button>' : '') +
+          '</div>';
+      };
+      box.innerHTML =
+        '<div style="font-size:.74rem;color:var(--text-muted);margin-bottom:6px">我的关注（' + d.following.length + '）</div>' +
+        (d.following.length ? d.following.map(function (x) { return item(x, true); }).join('') : '<div class="helper" style="margin-bottom:10px">还没有关注的人，去帖子页点「+ 关注」。</div>') +
+        '<div style="font-size:.74rem;color:var(--text-muted);margin:12px 0 6px">关注者（' + d.followers.length + '）</div>' +
+        (d.followers.length ? d.followers.map(function (x) { return item(x, false); }).join('') : '<div class="helper">还没有人关注你。</div>');
+      [].forEach.call(box.querySelectorAll('.follow-btn[data-sid]'), function (b) {
+        b.onclick = function () {
+          Forum.follow(b.getAttribute('data-sid'), 'unfollow').then(function (r) {
+            if (r && r.ok) renderFollow();
+          });
+        };
+      });
+    }).catch(function () { box.textContent = '加载失败，请刷新重试'; });
+  }
+
   function load() {
     renderMe();
+    renderFollow();
     if (!Forum.me()) {
       listEl.innerHTML = '<div class="empty"><b>登录后可以查看自己的帖子</b>' +
         '用 Star ID 或 OK 账号登录即可。<div style="margin-top:16px"><button class="btn btn-primary" id="lLogin">登录 / 注册</button></div></div>';

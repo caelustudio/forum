@@ -219,6 +219,11 @@ mark.hl {
 .vbadge { display: inline-flex; flex: none; width: 15px; height: 15px; vertical-align: middle; margin-left: 4px; }
 .vbadge svg { width: 100%; height: 100%; display: block; }
 b + .vbadge { margin-left: -4px; margin-right: -4px; }
+/* 关注按钮 */
+.follow-btn { flex: none; margin-left: auto; padding: 4px 14px; border-radius: 999px; border: 1px solid #1d9bf0; background: transparent; color: #1d9bf0; font-size: .74rem; cursor: pointer; }
+.follow-btn:hover { background: rgba(29,155,240,.08); }
+.follow-btn.on { border-color: var(--border-color); color: var(--text-muted); }
+.follow-btn.sm { margin-left: 2px; padding: 1px 9px; font-size: .66rem; }
 .who { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .who b { font-weight: 400; font-size: .82rem; white-space: nowrap; }
 .who .sid { font-size: .7rem; color: var(--text-muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }

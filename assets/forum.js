@@ -267,6 +267,47 @@
     }).catch(function () { clean(); return { ok: false, error: '网络异常，请稍后重试' }; });
   }
 
+  /* ---------- GitSource 登录（与 OK 账号同一套交接模式） ---------- */
+  function gsStart() {
+    try { sessionStorage.setItem('gs_return', location.pathname + location.search); } catch (e) {}
+    location.href = API + '/api/auth/gitsource/start?next=' + encodeURIComponent(location.origin + '/');
+  }
+  // 处理 GitSource 回跳：?gs_code=<一次性码> 换令牌；?gs_error=<原因> 展示提示
+  function handleGsReturn() {
+    var sp = new URLSearchParams(location.search);
+    var code = sp.get('gs_code');
+    var err = sp.get('gs_error');
+    var back = '';
+    try { back = sessionStorage.getItem('gs_return') || ''; sessionStorage.removeItem('gs_return'); } catch (e) {}
+    function clean() {
+      var u = new URL(location.href);
+      ['gs_code', 'gs_error', 'gs_new'].forEach(function (k) { u.searchParams.delete(k); });
+      history.replaceState(null, '', u.pathname + (u.search ? u.search : '') + u.hash);
+    }
+    if (err) {
+      clean();
+      return Promise.resolve({ ok: false, error: decodeURIComponent(err) });
+    }
+    if (!code) return Promise.resolve(null);
+    return api('/api/auth/gitsource/session', { code: code }).then(function (d) {
+      if (d && d.ok && d.token) {
+        setToken(d.token);
+        state.me = d.user || null;
+        if (back && back !== location.pathname + location.search) { location.replace(back); return { ok: true }; }
+      }
+      clean();
+      return d || { ok: false, error: '登录失败，请重试' };
+    }).catch(function () { clean(); return { ok: false, error: '网络异常，请稍后重试' }; });
+  }
+
+  /* ---------- 关注 ---------- */
+  function follow(starId, action) {
+    return api('/api/forum/follow', authBody({ starId: starId, action: action === 'unfollow' ? 'unfollow' : 'follow' }));
+  }
+  function followlist() {
+    return api('/api/forum/followlist?token=' + encodeURIComponent(token()));
+  }
+
   /* ---------- 点赞 ---------- */
   function like(kind, id) {
     return api('/api/forum/like', authBody({ kind: kind, id: id }));
@@ -432,6 +473,7 @@
         '<p class="msg" id="liMsg"></p>' +
         '<div class="divider">或</div>' +
         '<button class="ok-btn" id="okBtn"><img src="/assets/favicon.png" alt="">使用 OK 账号登录 / 注册</button>' +
+        '<button class="ok-btn" id="gsBtn" style="margin-top:8px"><img src="https://git.rivulet.org.cn/favicon.ico" alt="" onerror="this.style.display=\'none\'">使用 GitSource 账号登录 / 注册</button>' +
         '<p class="hint" style="font-size:.74rem;color:var(--text-muted);margin:14px 0 0;line-height:1.7">还没有 Star ID？<a class="link-btn" href="https://www.caelus.top/account/" target="_blank" rel="noopener">前往账号中心注册</a></p>' +
       '</div>';
     document.body.appendChild(wrap);
@@ -458,6 +500,7 @@
     q('#liPass').addEventListener('keydown', function (e) { if (e.key === 'Enter') submit(); });
     q('#liEmail').addEventListener('keydown', function (e) { if (e.key === 'Enter') q('#liPass').focus(); });
     q('#okBtn').addEventListener('click', okStart);
+    var gsB = q('#gsBtn'); if (gsB) gsB.addEventListener('click', gsStart);
     var f = q('#liEmail'); if (f) f.focus();
   }
 
@@ -476,20 +519,23 @@
     applyTheme(currentTheme());
     initCursor();
     return handleOkReturn().then(function (r) {
-      return refreshMe().then(function () {
-        shell(opts.active);
-        if (r && r.error) {
-          setTimeout(function () {
-            if (!state.me) { openLogin(); var m = q('#liMsg'); if (m) { m.className = 'msg err'; m.textContent = r.error; } }
-            else { alert(r.error); }
-          }, 60);
-        }
-        document.addEventListener('forum:login', function () {
-          if (typeof opts.onLogin === 'function') opts.onLogin();
+      return handleGsReturn().then(function (r2) {
+        return refreshMe().then(function () {
+          shell(opts.active);
+          var e = (r2 && r2.error) ? r2.error : ((r && r.error) || '');
+          if (e) {
+            setTimeout(function () {
+              if (!state.me) { openLogin(); var m = q('#liMsg'); if (m) { m.className = 'msg err'; m.textContent = e; } }
+              else { alert(e); }
+            }, 60);
+          }
+          document.addEventListener('forum:login', function () {
+            if (typeof opts.onLogin === 'function') opts.onLogin();
+          });
+          if (typeof opts.onReady === 'function') opts.onReady();
+          if (!opts.noTrack) track(opts.postId || '');
+          return state.me;
         });
-        if (typeof opts.onReady === 'function') opts.onReady();
-        if (!opts.noTrack) track(opts.postId || '');
-        return state.me;
       });
     });
   }
@@ -498,7 +544,8 @@
     API: API, api: api, authBody: authBody,
     token: token, setToken: setToken, clearToken: clearToken,
     me: function () { return state.me; },
-    refreshMe: refreshMe, login: login, logout: logout, okStart: okStart,
+    refreshMe: refreshMe, login: login, logout: logout, okStart: okStart, gsStart: gsStart,
+    follow: follow, followlist: followlist,
     like: like, remove: remove, track: track, requireLogin: requireLogin, openLogin: openLogin,
     esc: esc, linkify: linkify, md: md, hl: hl, timeAgo: timeAgo, avatarHtml: avatarHtml, vBadge: vBadge, tagsHtml: tagsHtml,
     q: q, init: init, renderRight: renderRight
