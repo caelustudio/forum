@@ -472,8 +472,8 @@
         '<button class="btn btn-primary" id="liBtn" style="width:100%;padding:.6rem">登录</button>' +
         '<p class="msg" id="liMsg"></p>' +
         '<div class="divider">或</div>' +
-        '<button class="ok-btn" id="okBtn"><img src="/assets/favicon.png" alt="">使用 OK 账号登录 / 注册</button>' +
-        '<button class="ok-btn" id="gsBtn" style="margin-top:8px"><img src="https://git.rivulet.org.cn/favicon.ico" alt="" onerror="this.style.display=\'none\'">使用 GitSource 账号登录 / 注册</button>' +
+        '<button class="ok-btn" id="okBtn"><img class="oklogo" src="/assets/ok-logo.png" alt="">使用 OK 账号登录 / 注册</button>' +
+        '<button class="ok-btn" id="gsBtn" style="margin-top:8px"><img class="gslogo" src="/assets/gitsource.svg" alt="">使用 GitSource 账号登录 / 注册</button>' +
         '<p class="hint" style="font-size:.74rem;color:var(--text-muted);margin:14px 0 0;line-height:1.7">还没有 Star ID？<a class="link-btn" href="https://www.caelus.top/account/" target="_blank" rel="noopener">前往账号中心注册</a></p>' +
       '</div>';
     document.body.appendChild(wrap);
