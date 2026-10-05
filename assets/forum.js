@@ -428,12 +428,19 @@
     box.innerHTML =
       (u
         ? '<a class="btn btn-primary" href="/new.html">发帖</a>' +
+          '<button class="tb-bell" id="bellBtn" type="button" title="通知" aria-label="通知">' +
+            '<svg viewBox="0 0 24 24"><path d="M12 22a2.4 2.4 0 0 0 2.4-2.4H9.6A2.4 2.4 0 0 0 12 22zm7.2-5.6v-1l-1.3-1.3v-4.3c0-3-1.6-5.5-4.4-6.1V3a1.5 1.5 0 0 0-3 0v.7C7.7 4.3 6.1 6.8 6.1 9.8v4.3L4.8 15.4v1z"/></svg>' +
+            '<i class="bell-dot" id="bellDot" hidden></i>' +
+          '</button>' +
           '<div class="me-chip" id="meChip" title="账号菜单">' + avatarHtml(u, 'sm') + '<b>' + esc(u.nickname || 'Star ID 用户') + '</b>' + vBadge(u) + '</div>'
         : '<button class="btn btn-primary" id="loginBtn">登录 / 注册</button>') +
       '<button class="theme-toggle" id="themeBtn" title="切换深色/浅色模式" aria-label="切换深色/浅色模式"><svg id="themeIcon" viewBox="0 0 24 24"></svg></button>';
 
     var lb = q('#loginBtn');
     if (lb) lb.addEventListener('click', function () { openLogin(); });
+    var bell = q('#bellBtn');
+    if (bell) bell.addEventListener('click', function (e) { e.stopPropagation(); openBell(); });
+    if (u) loadUnread();
     var tb = q('#themeBtn');
     if (tb) tb.addEventListener('click', toggleTheme);
     updateThemeIcon();
@@ -466,6 +473,152 @@
         }, { once: true });
       }, 0);
     });
+  }
+
+  /* ---------- 站内通知（顶栏铃铛） ---------- */
+  var notifyTimer = null;
+  function loadUnread() {
+    if (!state.me) return;
+    api('/api/forum/notifications?size=1').then(function (d) {
+      if (!d || !d.ok) return;
+      var dot = q('#bellDot');
+      if (!dot) return;
+      var n = d.unread || 0;
+      dot.hidden = !n;
+      dot.textContent = n > 99 ? '99+' : String(n);
+    });
+  }
+  function noticeLine(n) {
+    var target = n.postId
+      ? '/post.html?id=' + encodeURIComponent(n.postId)
+      : (n.actorStarId ? '/u.html?u=' + encodeURIComponent(n.actorStarId) : '');
+    return '<div class="nt-item' + (n.read ? '' : ' unread') + '"' +
+      (target ? ' data-href="' + target + '"' : '') + ' data-nid="' + esc(n.id) + '">' +
+      avatarHtml({ nickname: n.actor, avatar: n.avatar }, 'sm') +
+      '<div class="nt-main">' +
+        '<div class="nt-top"><span class="nt-actor">' + esc(n.actor || '') + '</span>' +
+          (n.verified ? V_SVG : '') + '<span class="nt-text">' + esc(n.text) + '</span></div>' +
+        (n.postTitle ? '<div class="nt-title">' + esc(n.postTitle) + '</div>' : '') +
+        (n.excerpt ? '<div class="nt-ex">' + esc(n.excerpt) + '</div>' : '') +
+        '<div class="nt-time">' + timeAgo(n.createdAt) + '</div>' +
+      '</div>' +
+    '</div>';
+  }
+  function openBell() {
+    var ex = q('#bellPanel');
+    if (ex) { ex.remove(); return; }
+    var p = document.createElement('div');
+    p.id = 'bellPanel';
+    p.className = 'nt-panel';
+    p.innerHTML = '<div class="nt-head"><b>通知</b><button type="button" id="ntReadAll">全部已读</button></div>' +
+      '<div class="nt-list" id="ntList"><div class="helper" style="padding:16px">加载中…</div></div>';
+    document.body.appendChild(p);
+    var btn = q('#bellBtn');
+    if (btn) {
+      var r = btn.getBoundingClientRect();
+      p.style.top = (r.bottom + 8) + 'px';
+      p.style.left = Math.max(12, Math.min(r.right - p.offsetWidth, window.innerWidth - p.offsetWidth - 12)) + 'px';
+    }
+    function paint(list) {
+      var box = q('#ntList');
+      if (!box) return;
+      box.innerHTML = list.length
+        ? list.map(noticeLine).join('')
+        : '<div class="helper" style="padding:26px 14px;text-align:center">还没有通知<br><span style="font-size:.72rem">有人评论你、关注你时会出现在这里</span></div>';
+      [].forEach.call(box.querySelectorAll('.nt-item'), function (el) {
+        el.onclick = function () {
+          var href = el.getAttribute('data-href');
+          var nid = el.getAttribute('data-nid');
+          el.classList.remove('unread');
+          api('/api/forum/notifications/read', authBody({ id: nid })).then(loadUnread);
+          if (href) location.href = href;
+        };
+      });
+    }
+    api('/api/forum/notifications?size=30').then(function (d) {
+      if (!d || !d.ok) { paint([]); return; }
+      paint(d.notices || []);
+    }).catch(function () { paint([]); });
+    var ra = q('#ntReadAll');
+    if (ra) ra.onclick = function () {
+      api('/api/forum/notifications/read', authBody({})).then(function (d) {
+        if (!d || !d.ok) return;
+        loadUnread();
+        [].forEach.call(q('#ntList').querySelectorAll('.nt-item'), function (el) { el.classList.remove('unread'); });
+      });
+    };
+    setTimeout(function () {
+      document.addEventListener('click', function close(e) {
+        var n = q('#bellPanel');
+        if (n && !n.contains(e.target) && e.target.id !== 'bellBtn') n.remove();
+        document.removeEventListener('click', close);
+      }, { once: true });
+    }, 0);
+  }
+
+  /* ---------- 个人主页链接（作者名 / 头像可点） ---------- */
+  function userHref(starId) { return starId ? '/u.html?u=' + encodeURIComponent(starId) : ''; }
+  function bindUserLinks(root) {
+    [].forEach.call((root || document).querySelectorAll('[data-uid]:not([data-uid-bound])'), function (el) {
+      el.setAttribute('data-uid-bound', '1');
+      el.style.cursor = 'pointer';
+      el.addEventListener('click', function (e) {
+        var sid = el.getAttribute('data-uid');
+        if (!sid) return;
+        e.preventDefault();
+        e.stopPropagation();
+        location.href = userHref(sid);
+      });
+    });
+  }
+
+  /* ---------- 图片上传（发帖 / 评论贴图共用：本地压缩后再传） ---------- */
+  function compressImage(file, cb) {
+    if (file.size > 12 * 1024 * 1024) { cb(null, '图片太大（原图请小于 12MB）'); return; }
+    var fr = new FileReader();
+    fr.onload = function () {
+      var img = new Image();
+      img.onload = function () {
+        var MAX = 1600;
+        var sc = Math.min(1, MAX / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+        var cw = Math.max(1, Math.round((img.naturalWidth || 1) * sc));
+        var ch = Math.max(1, Math.round((img.naturalHeight || 1) * sc));
+        var c = document.createElement('canvas');
+        c.width = cw; c.height = ch;
+        var ctx = c.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, cw, ch);
+        ctx.drawImage(img, 0, 0, cw, ch);
+        var out = c.toDataURL('image/png');
+        if (out.length > 2600000) out = c.toDataURL('image/jpeg', 0.86);
+        if (out.length > 3600000) { cb(null, '压缩后仍超过 3MB，请换一张小一些的图'); return; }
+        cb(out, null);
+      };
+      img.onerror = function () { cb(null, '图片读取出错，请换一张'); };
+      img.src = fr.result;
+    };
+    fr.onerror = function () { cb(null, '图片读取出错，请换一张'); };
+    fr.readAsDataURL(file);
+  }
+  function uploadImage(file, cb) {
+    compressImage(file, function (dataUrl, err) {
+      if (err) { cb(null, err); return; }
+      api('/api/forum/upload', authBody({ data: dataUrl })).then(function (d) {
+        if (!d || !d.ok) { cb(null, (d && d.error) || '上传失败，请稍后重试'); return; }
+        cb(d.url, null);
+      }).catch(function () { cb(null, '网络异常，上传失败'); });
+    });
+  }
+  function pickImage(cb) {
+    if (!requireLogin('登录后就可以贴图')) return;
+    var inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = 'image/png,image/jpeg,image/webp,image/gif';
+    inp.onchange = function () {
+      var f = inp.files && inp.files[0];
+      if (f) uploadImage(f, cb);
+    };
+    inp.click();
   }
 
   /* ---------- 登录弹窗 ---------- */
@@ -542,7 +695,13 @@
           document.addEventListener('forum:login', function () {
             if (typeof opts.onLogin === 'function') opts.onLogin();
           });
+          if (state.me) {
+            loadUnread();
+            if (notifyTimer) clearInterval(notifyTimer);
+            notifyTimer = setInterval(loadUnread, 60000); // 未读红点每分钟刷一次
+          }
           if (typeof opts.onReady === 'function') opts.onReady();
+          bindUserLinks(document);
           if (!opts.noTrack) track(opts.postId || '');
           return state.me;
         });
@@ -560,6 +719,7 @@
     like: like, remove: remove, track: track, requireLogin: requireLogin, openLogin: openLogin,
     esc: esc, linkify: linkify, md: md, hl: hl, timeAgo: timeAgo, avatarHtml: avatarHtml, vBadge: vBadge, tagsHtml: tagsHtml,
     V_SVG: V_SVG,
+    pickImage: pickImage, uploadImage: uploadImage, bindUserLinks: bindUserLinks, userHref: userHref, loadUnread: loadUnread,
     q: q, init: init, renderRight: renderRight
   };
 })();

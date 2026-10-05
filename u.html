@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>用户主页 · Caelus 论坛</title>
+<link rel="icon" href="/assets/favicon.png" type="image/png">
+<link rel="stylesheet" href="https://www.caelus.top/fonts/opposans40/result.css">
+<link rel="stylesheet" href="/assets/forum.css?v=20261005d">
+<script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<style>
+  .pf-stats { display:flex; gap:18px; margin-top:8px; flex-wrap:wrap; }
+  .pf-stats span { font-size:.76rem; color:rgba(255,255,255,.9); }
+  .pf-stats b { font-weight:500; -webkit-text-stroke:.3px currentColor; margin-right:3px; }
+  .cmt-item { padding:13px 4px; border-bottom:1px solid var(--border-color); }
+  .cmt-item:last-child { border-bottom:0; }
+  .cmt-item .ci-top { display:flex; align-items:center; gap:8px; margin-bottom:6px; flex-wrap:wrap; }
+  .cmt-item .ci-post { font-size:.74rem; color:var(--text-muted); }
+  .cmt-item .ci-post a { color:var(--accent); text-decoration:none; }
+  .cmt-item .ci-body { font-size:.84rem; color:var(--text-secondary); line-height:1.75; word-break:break-word; }
+</style>
+</head>
+<body>
+<div class="wrap single">
+  <div class="main">
+    <div id="banner" class="profile-banner"><div class="helper" style="color:rgba(255,255,255,.75)">加载中…</div></div>
+    <div class="pf-tip" id="pfTip"></div>
+
+    <div class="pf-tabs" id="tabs" style="display:none">
+      <button data-tab="posts" class="on">帖子</button>
+      <button data-tab="comments">评论</button>
+    </div>
+
+    <div class="post-list" id="list"><div class="skel"></div><div class="skel"></div></div>
+    <div id="cmts" style="display:none"><div class="skel"></div></div>
+  </div>
+</div>
+
+<footer class="foot">
+  © 2026 Caelus Studio · <a href="https://www.caelus.top/">caelus.top</a> · <a href="/rules.html">论坛使用协议</a>
+</footer>
+
+<script src="/assets/forum.js?v=20261005d"></script>
+<script>
+(function () {
+  var starId = new URLSearchParams(location.search).get('u') || '';
+  var listEl = Forum.q('#list'), cmtsEl = Forum.q('#cmts'),
+      tabsEl = Forum.q('#tabs'), bannerEl = Forum.q('#banner');
+  var data = null, curTab = 'posts';
+
+  function card(p) {
+    return '<a class="post-card" href="/post.html?id=' + encodeURIComponent(p.id) + '">' +
+      '<div class="pc-head">' +
+        '<div class="who">' + (p.category ? '<span class="cat-badge">' + Forum.esc(p.category) + '</span>' : '') +
+          '<b>' + Forum.esc(p.title) + '</b></div>' +
+        '<span class="pc-time">' + Forum.timeAgo(p.createdAt) +
+          (p.editedAt ? '<span class="edited-mark">已编辑</span>' : '') + '</span>' +
+      '</div>' +
+      (p.excerpt ? '<p class="pc-excerpt">' + Forum.esc(p.excerpt) + '</p>' : '') +
+      '<div class="pc-foot">' +
+        '<div class="tags">' + Forum.tagsHtml(p.tags) + '</div>' +
+        '<div class="pc-stats">' +
+          '<i><svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.3-8.5C1.2 9.2 3 5.9 6.3 5.3c2-.4 4 .5 5.7 2.6 1.7-2.1 3.7-3 5.7-2.6 3.3.6 5.1 3.9 3.6 7.2C19.5 16.4 12 21 12 21z"/></svg>' + p.likes + '</i>' +
+          '<i>' + p.comments + ' 条评论</i>' +
+          '<i>' + (p.views || 0) + ' 次阅读</i>' +
+        '</div>' +
+      '</div>' +
+    '</a>';
+  }
+
+  function fmtDate(ts) {
+    if (!ts) return '';
+    var d = new Date(ts);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  function renderBanner(u) {
+    var inner = u.avatar
+      ? '<img class="pf-ava" src="' + Forum.esc(u.avatar) + '" alt="">'
+      : '<span class="pf-ava">' + Forum.esc(String(u.nickname || '?').trim().charAt(0) || '?') + '</span>';
+    var days = '';
+    if (u.createdAt) {
+      var n = Math.max(1, Math.floor((Date.now() - u.createdAt) / 86400000));
+      days = '<div class="pf-days">已加入 ' + n + ' 天（' + fmtDate(u.createdAt) + ' 注册）</div>';
+    }
+    var btn = '';
+    if (u.mine) {
+      btn = '<a class="pf-btn" href="/mine.html">我的主页</a>' +
+        '<a class="pf-btn ghost" href="https://www.caelus.top/account/">账号中心</a>';
+    } else if (u.starId && Forum.me()) {
+      btn = '<button class="pf-btn' + (u.followingThis ? ' ghost' : '') + '" id="followBtn">' + (u.followingThis ? '已关注' : '+ 关注') + '</button>';
+    }
+    bannerEl.innerHTML =
+      inner +
+      '<div style="min-width:0">' +
+        '<div class="pf-name">' + Forum.esc(u.nickname || 'Star ID 用户') + Forum.vBadge(u) +
+          (u.verified ? '<span class="pf-pill">' + Forum.V_SVG + 'Caelus Studio</span>' : '') +
+        '</div>' +
+        '<div class="pf-meta">' +
+          '<span><i>ID</i><span style="font-family:ui-monospace,Menlo,monospace">' + Forum.esc(u.starId || '') + '</span></span>' +
+        '</div>' +
+        '<div class="pf-stats">' +
+          '<span><b>' + (u.posts || 0) + '</b>帖子</span>' +
+          '<span><b>' + (u.comments || 0) + '</b>评论</span>' +
+          '<span><b>' + (u.following || 0) + '</b>关注</span>' +
+          '<span><b>' + (u.followers || 0) + '</b>粉丝</span>' +
+        '</div>' +
+        days +
+      '</div>' +
+      '<span class="grow"></span>' + btn;
+    var fb = Forum.q('#followBtn');
+    if (fb) fb.onclick = function () {
+      if (!Forum.requireLogin('登录后就可以关注别人')) return;
+      fb.disabled = true;
+      var on = fb.classList.contains('ghost');
+      Forum.follow(u.starId, on ? 'unfollow' : 'follow').then(function (d) {
+        fb.disabled = false;
+        if (!d || !d.ok) { alert((d && d.error) || '操作失败，请稍后重试'); return; }
+        u.followingThis = d.following;
+        u.followers = Math.max(0, (u.followers || 0) + (d.following ? 1 : -1));
+        renderBanner(u);
+      }).catch(function () { fb.disabled = false; alert('网络异常，请稍后重试'); });
+    };
+  }
+
+  function paint() {
+    var pb = tabsEl.querySelector('[data-tab="posts"]');
+    var cb = tabsEl.querySelector('[data-tab="comments"]');
+    pb.textContent = '帖子（' + (data.posts || []).length + '）';
+    cb.textContent = '评论（' + (data.comments || []).length + '）';
+    if (curTab === 'posts') {
+      cmtsEl.style.display = 'none'; listEl.style.display = '';
+      listEl.innerHTML = data.posts.length
+        ? data.posts.map(card).join('')
+        : '<div class="empty"><b>还没有发过帖子</b>这个人还挺安静。</div>';
+    } else {
+      listEl.style.display = 'none'; cmtsEl.style.display = '';
+      cmtsEl.innerHTML = data.comments.length
+        ? data.comments.map(function (c) {
+            return '<div class="cmt-item">' +
+              '<div class="ci-top">' +
+                (c.postId ? '<span class="ci-post">在 <a href="/post.html?id=' + encodeURIComponent(c.postId) + '">' +
+                  Forum.esc(c.postTitle || '这篇帖子') + '</a> 下</span>' : '') +
+                '<span style="font-size:.72rem;color:var(--text-muted)">' + Forum.timeAgo(c.createdAt) +
+                  (c.editedAt ? '<span class="edited-mark">已编辑</span>' : '') + '</span>' +
+              '</div>' +
+              '<div class="ci-body">' + Forum.md(c.body) + '</div>' +
+            '</div>';
+          }).join('')
+        : '<div class="empty"><b>还没有发过评论</b></div>';
+    }
+  }
+
+  function switchTab(t) {
+    curTab = t;
+    [].forEach.call(tabsEl.querySelectorAll('button'), function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === t); });
+    paint();
+  }
+  [].forEach.call(tabsEl.querySelectorAll('button'), function (b) {
+    b.addEventListener('click', function () { switchTab(b.getAttribute('data-tab')); });
+  });
+
+  function load() {
+    if (!starId) {
+      bannerEl.innerHTML = '<div class="pf-ava">?</div><div><div class="pf-name">缺少用户参数</div>' +
+        '<div class="pf-days">从帖子或评论里点作者名就能打开主页</div>' +
+        '<div style="margin-top:10px"><a class="pf-btn" href="/">回到论坛</a></div></div>';
+      listEl.innerHTML = '';
+      return;
+    }
+    var p = new URLSearchParams({ starId: starId });
+    if (Forum.token()) p.set('token', Forum.token());
+    Forum.api('/api/forum/user?' + p.toString()).then(function (d) {
+      if (!d || !d.ok) {
+        bannerEl.innerHTML = '<div class="pf-ava">?</div><div><div class="pf-name">' + Forum.esc((d && d.error) || '打不开这个主页') + '</div>' +
+          '<div class="pf-days">可能账号不存在，或者当前不可访问。</div>' +
+          '<div style="margin-top:10px"><a class="pf-btn" href="/">回到论坛</a></div></div>';
+        tabsEl.style.display = 'none';
+        listEl.innerHTML = '';
+        return;
+      }
+      data = { user: d.user, posts: d.posts || [], comments: d.comments || [] };
+      document.title = (d.user.nickname || '用户') + ' 的主页 · Caelus 论坛';
+      renderBanner(d.user);
+      tabsEl.style.display = '';
+      switchTab('posts');
+    }).catch(function () {
+      bannerEl.innerHTML = '<div class="pf-ava">?</div><div><div class="pf-name">网络异常</div>' +
+        '<div class="pf-days">请稍后刷新重试</div></div>';
+    });
+  }
+
+  Forum.init({ active: '', onReady: load, onLogin: load });
+})();
+</script>
+</body>
+</html>

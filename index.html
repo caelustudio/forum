@@ -8,7 +8,7 @@
 <link rel="icon" href="/assets/favicon.png" type="image/png">
 <link rel="canonical" href="https://forum.caelus.top/">
 <link rel="stylesheet" href="https://www.caelus.top/fonts/opposans40/result.css">
-<link rel="stylesheet" href="/assets/forum.css?v=20261005c">
+<link rel="stylesheet" href="/assets/forum.css?v=20261005d">
 <script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 </head>
 <body>
@@ -61,7 +61,7 @@
   © 2026 Caelus Studio · <a href="https://www.caelus.top/">caelus.top</a> · <a href="/rules.html">论坛使用协议</a>
 </footer>
 
-<script src="/assets/forum.js?v=20261005c"></script>
+<script src="/assets/forum.js?v=20261005d"></script>
 <script>
 (function () {
   var sp = new URLSearchParams(location.search);
@@ -147,7 +147,8 @@
     var onlyFrom = from.length && m.indexOf('title') < 0 && m.indexOf('body') < 0;
     return '<a class="post-card" href="/post.html?id=' + encodeURIComponent(p.id) + '">' +
       '<div class="pc-head">' +
-        '<div class="who">' + Forum.avatarHtml(p) + '<b>' + Forum.hl(p.author, kw) + '</b>' + Forum.vBadge(p) +
+        '<div class="who"' + (p.starId ? ' data-uid="' + Forum.esc(p.starId) + '" title="查看个人主页"' : '') + '>' +
+          Forum.avatarHtml(p) + '<b>' + Forum.hl(p.author, kw) + '</b>' + Forum.vBadge(p) +
           (p.starId ? '<span class="sid">' + Forum.hl(p.starId, kw) + '</span>' : '') + '</div>' +
         '<span class="pc-time">' + Forum.timeAgo(p.createdAt) + '</span>' +
       '</div>' +
@@ -185,6 +186,7 @@
         (view.q || view.tag ? '换个关键词或话题看看，也可以直接发一篇。' : '来做第一个发帖的人吧。') + '</div>';
     } else {
       listEl.innerHTML = d.posts.map(card).join('');
+      Forum.bindUserLinks(listEl);
     }
 
     var pages = Math.max(1, Math.ceil(d.total / d.size));

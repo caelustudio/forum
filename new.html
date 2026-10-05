@@ -6,7 +6,7 @@
 <title>写帖子 · Caelus 论坛</title>
 <link rel="icon" href="/assets/favicon.png" type="image/png">
 <link rel="stylesheet" href="https://www.caelus.top/fonts/opposans40/result.css">
-<link rel="stylesheet" href="/assets/forum.css?v=20261005c">
+<link rel="stylesheet" href="/assets/forum.css?v=20261005d">
 <script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 </head>
 <body>
@@ -71,7 +71,8 @@
         <li>正文支持 Markdown，点「预览」可看最终效果。</li>
         <li>分类决定帖子归到哪个板块，广场顶部可按分类筛选。</li>
         <li>话题标签最多 3 个，会显示在论坛的「话题」里。</li>
-        <li>发布后可以随时删除自己的帖子。</li>
+        <li>正文可以贴图：点工具栏的图片按钮，或直接把图片粘贴进来。</li>
+        <li>发布后可以随时编辑或删除自己的帖子。</li>
         <li>请勿发布侵权、广告或违法违规内容，规范见<a href="/rules.html" style="color:var(--accent,#1456F0)">《论坛使用协议》</a>。</li>
       </ul>
     </div>
@@ -82,7 +83,7 @@
   © 2026 Caelus Studio · <a href="https://www.caelus.top/">caelus.top</a> · <a href="/rules.html">论坛使用协议</a>
 </footer>
 
-<script src="/assets/forum.js?v=20261005c"></script>
+<script src="/assets/forum.js?v=20261005d"></script>
 <script>
 (function () {
   var msg = Forum.q('#msg'), counter = Forum.q('#counter');
@@ -151,11 +152,52 @@
     quote: function () { wrapSel('> ', '', '引用内容', true); },
     list: function () { wrapSel('- ', '', '列表项', true); },
     code: function () { wrapSel('```\n', '\n```', '代码', true); },
-    link: function () { wrapSel('[', '](https://)', '链接文字'); },
-    image: function () { wrapSel('![', '](https://)', '图片说明'); }
+    link: function () { wrapSel('[', '](https://)', '链接文字'); }
   };
+  /* ---------- 贴图：本地压缩后上传，插入 Markdown 图片语法 ---------- */
+  function insertUrl(url) {
+    var v = ta.value;
+    var s = ta.selectionStart == null ? v.length : ta.selectionStart;
+    var e2 = ta.selectionEnd == null ? s : ta.selectionEnd;
+    var gap = v.slice(0, s).trim() ? '\n\n' : '';
+    ta.value = v.slice(0, s) + gap + '![](' + url + ')' + v.slice(e2);
+    updateCounter();
+    setMode('write');
+    ta.focus();
+    ta.selectionStart = ta.selectionEnd = s + gap.length + url.length + 5;
+  }
+  function uploadFile(file) {
+    var imgBtn = document.querySelector('#mdTools button[data-md="image"]');
+    if (imgBtn) imgBtn.classList.add('busy');
+    msg.className = 'msg';
+    msg.textContent = '图片上传中…';
+    Forum.uploadImage(file, function (url, err) {
+      if (imgBtn) imgBtn.classList.remove('busy');
+      if (err) { msg.className = 'msg err'; msg.textContent = err; return; }
+      msg.className = 'msg'; msg.textContent = '图片已插入';
+      insertUrl(url);
+    });
+  }
+  function pickImage() {
+    if (!Forum.requireLogin('登录后就可以贴图')) return;
+    var inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = 'image/png,image/jpeg,image/webp,image/gif';
+    inp.onchange = function () { var f = inp.files && inp.files[0]; if (f) uploadFile(f); };
+    inp.click();
+  }
+  ta.addEventListener('paste', function (e) {
+    var items = (e.clipboardData && e.clipboardData.items) || [];
+    for (var i = 0; i < items.length; i++) {
+      if (String(items[i].type || '').indexOf('image/') === 0) {
+        var f = items[i].getAsFile();
+        if (f) { e.preventDefault(); uploadFile(f); return; }
+      }
+    }
+  });
   [].forEach.call(document.querySelectorAll('#mdTools button'), function (b) {
     b.onclick = function () {
+      if (b.getAttribute('data-md') === 'image') { pickImage(); return; }
       if (mode === 'preview') setMode('write');
       var fn = MD_ACT[b.getAttribute('data-md')];
       if (fn) fn();

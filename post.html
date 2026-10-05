@@ -7,7 +7,7 @@
 <meta name="description" content="Caelus 论坛帖子详情">
 <link rel="icon" href="/assets/favicon.png" type="image/png">
 <link rel="stylesheet" href="https://www.caelus.top/fonts/opposans40/result.css">
-<link rel="stylesheet" href="/assets/forum.css?v=20261005c">
+<link rel="stylesheet" href="/assets/forum.css?v=20261005d">
 <script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <style>
   #cmtInput { min-height: 100px; }
@@ -48,7 +48,7 @@
   © 2026 Caelus Studio · <a href="https://www.caelus.top/">caelus.top</a> · <a href="/rules.html">论坛使用协议</a>
 </footer>
 
-<script src="/assets/forum.js?v=20261005c"></script>
+<script src="/assets/forum.js?v=20261005d"></script>
 <script>
 (function () {
   var id = new URLSearchParams(location.search).get('id') || '';
@@ -66,9 +66,11 @@
       (p.category ? '<div style="margin-bottom:9px"><span class="cat-badge">' + Forum.esc(p.category) + '</span></div>' : '') +
       '<h1>' + Forum.esc(p.title) + '</h1>' +
       '<div class="pc-head">' +
-        '<div class="who">' + Forum.avatarHtml(p, 'lg') + '<b>' + Forum.esc(p.author) + '</b>' + Forum.vBadge(p) +
+        '<div class="who"' + (p.starId ? ' data-uid="' + Forum.esc(p.starId) + '" title="查看个人主页"' : '') + '>' +
+          Forum.avatarHtml(p, 'lg') + '<b>' + Forum.esc(p.author) + '</b>' + Forum.vBadge(p) +
           (p.starId ? '<span class="sid">' + Forum.esc(p.starId) + '</span>' : '') + '</div>' +
-        '<span class="pc-time">' + Forum.timeAgo(p.createdAt) + '</span>' +
+        '<span class="pc-time">' + Forum.timeAgo(p.createdAt) +
+          (p.editedAt ? '<span class="edited-mark">已编辑</span>' : '') + '</span>' +
       '</div>' +
       (p.tags && p.tags.length ? '<div class="tags" style="margin-top:14px">' + Forum.tagsHtml(p.tags) + '</div>' : '') +
       '<div class="post-body">' + Forum.md(p.body) + '</div>' +
@@ -77,8 +79,11 @@
         '<span class="helper">' + p.comments + ' 条评论</span>' +
         '<span class="helper">' + (p.views || 0) + ' 次阅读</span>' +
         '<span class="grow" style="flex:1"></span>' +
-        (p.mine ? '<button class="btn btn-ghost" id="delPost" style="color:var(--danger)">删除帖子</button>' : '') +
+        (p.mine ? '<button class="btn btn-ghost" id="editPost">编辑</button>' +
+          '<button class="btn btn-ghost" id="delPost" style="color:var(--danger)">删除帖子</button>' : '') +
       '</div>';
+
+    Forum.bindUserLinks(postEl);
 
     [].forEach.call(postEl.querySelectorAll('.tag'), function (t) {
       t.onclick = function () { location.href = '/?tag=' + encodeURIComponent(t.getAttribute('data-tag')); };
@@ -102,6 +107,8 @@
         if (d && d.ok) location.href = '/'; else alert((d && d.error) || '删除失败');
       });
     };
+    var ed = Forum.q('#editPost');
+    if (ed) ed.onclick = startEdit;
 
     var ab = Forum.q('#authorBox');
     var pFollow = (!p.mine && Forum.me() && p.starId)
@@ -123,19 +130,86 @@
     };
   }
 
+  /* ---------- 编辑自己的帖子（标题 + 正文内联编辑，支持插图） ---------- */
+  function startEdit() {
+    if (!post || !post.mine) return;
+    var h1 = postEl.querySelector('h1');
+    var bodyEl = postEl.querySelector('.post-body');
+    var bar = postEl.querySelector('.content-bar');
+    if (!h1 || !bodyEl || !bar) return;
+    var oldTitle = post.title, oldBody = post.body || '';
+    h1.outerHTML = '<input class="title-in" id="edTitle" type="text" maxlength="80" placeholder="标题">';
+    bodyEl.outerHTML = '<textarea id="edBody" maxlength="8000" style="min-height:240px;margin-top:12px"></textarea>';
+    var ti = Forum.q('#edTitle'), bd = Forum.q('#edBody');
+    ti.value = oldTitle;
+    bd.value = oldBody;
+    bar.innerHTML =
+      '<button class="btn btn-primary" id="edSave">保存修改</button>' +
+      '<button class="btn btn-ghost" id="edCancel">取消</button>' +
+      '<button class="btn btn-ghost" id="edImg" type="button">插入图片</button>' +
+      '<span class="helper">支持 Markdown · Ctrl/⌘ + Enter 保存</span>' +
+      '<span class="msg" id="edMsg" style="margin:0"></span>';
+    function save() {
+      var t = ti.value.trim(), b = bd.value.trim();
+      var msg = Forum.q('#edMsg');
+      msg.className = 'msg err';
+      if (t.length < 2) { msg.textContent = '标题太短了，至少写 2 个字'; return; }
+      if (!b) { msg.textContent = '正文不能为空'; return; }
+      var btn = Forum.q('#edSave');
+      btn.disabled = true; btn.textContent = '保存中…';
+      Forum.api('/api/forum/edit', Forum.authBody({ kind: 'post', id: post.id, title: t, body: b })).then(function (d) {
+        if (!d || !d.ok) {
+          btn.disabled = false; btn.textContent = '保存修改';
+          msg.textContent = (d && d.error) || '保存失败，请稍后重试';
+          return;
+        }
+        post = Object.assign({}, post, d.post || {}, { body: b, editedAt: (d.post && d.post.editedAt) || Date.now() });
+        renderPost();
+      }).catch(function () {
+        btn.disabled = false; btn.textContent = '保存修改';
+        msg.textContent = '网络异常，请稍后重试';
+      });
+    }
+    Forum.q('#edSave').onclick = save;
+    Forum.q('#edCancel').onclick = function () { renderPost(); };
+    Forum.q('#edImg').onclick = function () {
+      var b = Forum.q('#edImg');
+      b.disabled = true; b.textContent = '上传中…';
+      Forum.pickImage(function (url, err) {
+        b.disabled = false; b.textContent = '插入图片';
+        var m = Forum.q('#edMsg');
+        if (err) { m.className = 'msg err'; m.textContent = err; return; }
+        m.className = 'msg'; m.textContent = '图片已插入';
+        var pos = bd.selectionStart == null ? bd.value.length : bd.selectionStart;
+        var gap = bd.value.slice(0, pos).trim() ? '\n\n' : '';
+        bd.value = bd.value.slice(0, pos) + gap + '![](' + url + ')' +
+          bd.value.slice(bd.selectionEnd == null ? pos : bd.selectionEnd);
+        bd.focus();
+      });
+    };
+    bd.addEventListener('keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') save();
+    });
+    ti.focus();
+  }
+
   function cmtHtml(c) {
+    var uid = c.starId ? ' data-uid="' + Forum.esc(c.starId) + '" title="查看个人主页"' : '';
     return '<div class="cmt" data-id="' + c.id + '">' +
-      Forum.avatarHtml(c) + '<div class="cmt-main">' +
-        '<div class="who"><b>' + Forum.esc(c.author) + '</b>' + Forum.vBadge(c) +
+      '<span class="cmt-ava"' + uid + '>' + Forum.avatarHtml(c) + '</span>' +
+      '<div class="cmt-main">' +
+        '<div class="who"' + uid + '><b>' + Forum.esc(c.author) + '</b>' + Forum.vBadge(c) +
           (c.starId ? '<span class="sid">' + Forum.esc(c.starId) + '</span>' : '') +
           (!c.mine && c.starId && Forum.me() ? '<button class="follow-btn sm' + (c.isFollowing ? ' on' : '') + '" data-sid="' + Forum.esc(c.starId) + '">' + (c.isFollowing ? '已关注' : '+ 关注') + '</button>' : '') +
           '<span style="font-size:.72rem;color:var(--text-muted)">' + Forum.timeAgo(c.createdAt) + '</span>' +
+          (c.editedAt ? '<span class="edited-mark">已编辑</span>' : '') +
         '</div>' +
         (c.replyToName ? '<div class="reply-ref">回复 <b>@' + Forum.esc(c.replyToName) + '</b></div>' : '') +
         '<div class="cmt-body">' + Forum.md(c.body) + '</div>' +
         '<div class="cmt-foot">' +
           '<button class="likeC' + (c.liked ? ' on' : '') + '">' + HEART + '<span>' + c.likes + '</span></button>' +
           '<button class="replyC">回复</button>' +
+          (c.mine ? '<button class="editC">编辑</button>' : '') +
           (c.mine ? '<button class="delC" style="color:var(--danger)">删除</button>' : '') +
         '</div>' +
       '</div>' +
@@ -148,6 +222,7 @@
       cmtListEl.innerHTML = '<div class="empty" style="padding:30px 10px"><b>还没有评论</b>来说两句吧。</div>';
     } else {
       cmtListEl.innerHTML = comments.map(cmtHtml).join('');
+      Forum.bindUserLinks(cmtListEl);
       [].forEach.call(cmtListEl.querySelectorAll('.cmt'), function (el) {
         var cid = el.getAttribute('data-id');
         el.querySelector('.likeC').onclick = function () {
@@ -179,6 +254,61 @@
             comments.forEach(function (x) { if (x.id === cid) x.isFollowing = d.following; });
           });
         };
+        var ebtn = el.querySelector('.editC');
+        if (ebtn) ebtn.onclick = function () {
+          if (!Forum.requireLogin('登录后就可以编辑')) return;
+          var bodyEl = el.querySelector('.cmt-body');
+          if (!bodyEl) return;
+          var cur = comments.filter(function (x) { return x.id === cid; })[0];
+          if (!cur) return;
+          var old = cur.body;
+          bodyEl.innerHTML =
+            '<textarea class="cmt-edit" maxlength="1200"></textarea>' +
+            '<div class="cmt-edit-bar">' +
+              '<button class="btn btn-primary" id="cSave">保存</button>' +
+              '<button class="btn btn-ghost" id="cCancel">取消</button>' +
+              '<button class="btn btn-ghost" id="cImg" type="button">插入图片</button>' +
+              '<span class="helper" id="cMsg"></span>' +
+            '</div>';
+          var ta2 = bodyEl.querySelector('textarea');
+          var cm = bodyEl.querySelector('#cMsg');
+          ta2.value = old;
+          ta2.focus();
+          bodyEl.querySelector('#cSave').onclick = function () {
+            var v = ta2.value.trim();
+            if (!v) { cm.textContent = '评论不能为空'; return; }
+            var sb = bodyEl.querySelector('#cSave');
+            sb.disabled = true; sb.textContent = '保存中…';
+            Forum.api('/api/forum/edit', Forum.authBody({ kind: 'comment', id: cid, body: v })).then(function (d) {
+              if (!d || !d.ok) {
+                sb.disabled = false; sb.textContent = '保存';
+                cm.textContent = (d && d.error) || '保存失败';
+                return;
+              }
+              comments.forEach(function (x) {
+                if (x.id === cid) { x.body = v; x.editedAt = (d.comment && d.comment.editedAt) || Date.now(); }
+              });
+              renderComments();
+            }).catch(function () {
+              sb.disabled = false; sb.textContent = '保存';
+              cm.textContent = '网络异常，请稍后重试';
+            });
+          };
+          bodyEl.querySelector('#cCancel').onclick = function () { renderComments(); };
+          bodyEl.querySelector('#cImg').onclick = function () {
+            var ib = bodyEl.querySelector('#cImg');
+            ib.disabled = true; ib.textContent = '上传中…';
+            Forum.pickImage(function (url, err) {
+              ib.disabled = false; ib.textContent = '插入图片';
+              if (err) { cm.textContent = err; return; }
+              var pos = ta2.selectionStart == null ? ta2.value.length : ta2.selectionStart;
+              var gap = ta2.value.slice(0, pos).trim() ? '\n\n' : '';
+              ta2.value = ta2.value.slice(0, pos) + gap + '![](' + url + ')' +
+                ta2.value.slice(ta2.selectionEnd == null ? pos : ta2.selectionEnd);
+              ta2.focus();
+            });
+          };
+        };
         var dbtn = el.querySelector('.delC');
         if (dbtn) dbtn.onclick = function () {
           if (!confirm('确定删除这条评论吗？')) return;
@@ -208,9 +338,10 @@
     }
     cmtFormEl.innerHTML =
       '<div class="reply-note" id="replyNote"></div>' +
-      '<textarea id="cmtInput" placeholder="说点什么…（支持 Markdown）" style="min-height:100px"></textarea>' +
+      '<textarea id="cmtInput" placeholder="说点什么…（支持 Markdown，也可以贴图）" style="min-height:100px"></textarea>' +
       '<div class="ed-foot">' +
         '<button class="btn btn-primary" id="cmtSend">发表评论</button>' +
+        '<button class="btn btn-ghost" id="cmtImg" type="button">插入图片</button>' +
         '<span class="helper">Ctrl / ⌘ + Enter 快速发表</span>' +
         '<span class="msg" id="cmtMsg" style="margin:0"></span>' +
       '</div>';
@@ -219,6 +350,21 @@
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') send();
     });
     Forum.q('#cmtSend').onclick = send;
+    Forum.q('#cmtImg').onclick = function () {
+      var ib = Forum.q('#cmtImg');
+      ib.disabled = true; ib.textContent = '上传中…';
+      Forum.pickImage(function (url, err) {
+        ib.disabled = false; ib.textContent = '插入图片';
+        var m = Forum.q('#cmtMsg');
+        if (err) { m.className = 'msg err'; m.textContent = err; return; }
+        m.className = 'msg'; m.textContent = '图片已插入';
+        var pos = ta.selectionStart == null ? ta.value.length : ta.selectionStart;
+        var gap = ta.value.slice(0, pos).trim() ? '\n\n' : '';
+        ta.value = ta.value.slice(0, pos) + gap + '![](' + url + ')' +
+          ta.value.slice(ta.selectionEnd == null ? pos : ta.selectionEnd);
+        ta.focus();
+      });
+    };
     function send() {
       var text = ta.value.trim();
       var msg = Forum.q('#cmtMsg');
