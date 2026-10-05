@@ -479,3 +479,55 @@ input, textarea, select, [contenteditable="true"] { cursor: auto !important; }
   border: 1px solid var(--border-color); background: var(--bg-card);
   font-size: .9rem; line-height: 1.8; color: var(--text-secondary); overflow-wrap: break-word;
 }
+
+/* ---------- 个人主页（仿 OK 个人中心） ---------- */
+.wrap.single { grid-template-columns: 1fr; }
+.profile-banner {
+  position: relative; overflow: hidden; border-radius: 16px; margin-bottom: 14px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: linear-gradient(115deg, #0a1c3d 0%, #10346e 48%, #1c5cb4 100%);
+  color: #fff; padding: 26px 26px; display: flex; gap: 20px; align-items: center; min-height: 132px;
+  box-shadow: 0 14px 34px rgba(9, 30, 66, .25);
+}
+.profile-banner::after {
+  content: ''; position: absolute; right: -70px; top: -90px; width: 300px; height: 300px; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255,255,255,.14), transparent 70%); pointer-events: none;
+}
+.profile-banner .pf-ava {
+  width: 86px; height: 86px; border-radius: 50%; flex: none; object-fit: cover;
+  border: 3px solid rgba(255,255,255,.9); background: #fff; color: #10346e;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 2rem; font-weight: 500; box-shadow: 0 6px 18px rgba(0,0,0,.25);
+}
+.profile-banner .pf-name { font-size: 1.14rem; font-weight: 500; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; -webkit-text-stroke: .3px currentColor; }
+.profile-banner .pf-name .vbadge { width: 17px; height: 17px; margin-left: 2px; }
+.profile-banner .pf-pill {
+  display: inline-flex; align-items: center; gap: 5px; font-size: .7rem; font-weight: 400; -webkit-text-stroke: 0;
+  padding: 3px 11px; border-radius: 999px; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.38);
+}
+.profile-banner .pf-pill svg { width: 13px; height: 13px; }
+.profile-banner .pf-meta { margin-top: 7px; font-size: .76rem; color: rgba(255,255,255,.88); display: flex; flex-direction: column; gap: 3px; }
+.profile-banner .pf-meta i { font-style: normal; margin-right: 6px; opacity: .75; font-size: .72rem; }
+.profile-banner .pf-days { margin-top: 5px; font-size: .72rem; color: rgba(255,255,255,.66); }
+.profile-banner .grow { flex: 1 1 auto; }
+.pf-btn {
+  flex: none; display: inline-flex; align-items: center; padding: 7px 16px; border-radius: 999px; cursor: pointer;
+  font-size: .76rem; font-family: inherit; text-decoration: none;
+  background: rgba(255,255,255,.92); color: #10346e; border: 1px solid transparent; font-weight: 500;
+}
+.pf-btn:hover { background: #fff; }
+.pf-btn.ghost { background: transparent; color: rgba(255,255,255,.92); border-color: rgba(255,255,255,.45); }
+.pf-btn.ghost:hover { background: rgba(255,255,255,.12); }
+.pf-tabs { display: flex; gap: 4px; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); }
+.pf-tabs button {
+  border: 0; background: transparent; color: var(--text-secondary); font-size: .84rem; font-family: inherit;
+  padding: 9px 14px; cursor: pointer; border-bottom: 2px solid transparent;
+}
+.pf-tabs button.on { color: var(--text-primary); border-bottom-color: var(--accent); font-weight: 500; -webkit-text-stroke: .3px currentColor; }
+.pf-tabs button:hover { color: var(--text-primary); }
+.pf-user { display: flex; align-items: center; gap: 12px; padding: 11px 4px; border-bottom: 1px solid var(--border-color); }
+.pf-user:last-child { border-bottom: 0; }
+@media (max-width: 640px) {
+  .profile-banner { flex-wrap: wrap; padding: 20px 18px; }
+  .profile-banner .grow { display: none; }
+}

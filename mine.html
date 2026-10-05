@@ -3,43 +3,38 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>我的帖子 · Caelus 论坛</title>
+<title>个人主页 · Caelus 论坛</title>
 <link rel="icon" href="/assets/favicon.png" type="image/png">
 <link rel="stylesheet" href="https://www.caelus.top/fonts/opposans40/result.css">
-<link rel="stylesheet" href="/assets/forum.css?v=20261004i">
+<link rel="stylesheet" href="/assets/forum.css?v=20261005a">
 <script>(function(){try{var t=localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 </head>
 <body>
-<div class="wrap">
+<div class="wrap single">
   <div class="main">
-    <div class="toolbar">
-      <span class="count-note" id="note">我的帖子</span>
-      <span class="grow"></span>
-      <a class="btn btn-primary" href="/new.html">写帖子</a>
-    </div>
-    <div class="post-list" id="list"><div class="skel"></div><div class="skel"></div></div>
-  </div>
+    <div id="banner" class="profile-banner"><div class="helper" style="color:rgba(255,255,255,.75)">加载中…</div></div>
 
-  <aside class="side">
-    <div class="card" id="meCard">
-      <div class="card-title">账号</div>
-      <div id="meBox" class="helper">加载中…</div>
+    <div class="pf-tabs" id="tabs" style="display:none">
+      <button data-tab="posts" class="on">我的帖子</button>
+      <button data-tab="following">关注</button>
+      <button data-tab="followers">粉丝</button>
     </div>
-    <div class="card" id="followCard" style="display:none">
-      <div class="card-title">关注</div>
-      <div id="followBox" class="helper">加载中…</div>
-    </div>
-  </aside>
+
+    <div class="post-list" id="list"><div class="skel"></div><div class="skel"></div></div>
+    <div id="people" style="display:none"><div class="skel"></div></div>
+  </div>
 </div>
 
 <footer class="foot">
   © 2026 Caelus Studio · <a href="https://www.caelus.top/">caelus.top</a> · <a href="/rules.html">论坛使用协议</a>
 </footer>
 
-<script src="/assets/forum.js?v=20261004i"></script>
+<script src="/assets/forum.js?v=20261005a"></script>
 <script>
 (function () {
-  var listEl = Forum.q('#list');
+  var listEl = Forum.q('#list'), peopleEl = Forum.q('#people'),
+      tabsEl = Forum.q('#tabs'), bannerEl = Forum.q('#banner'),
+      curTab = 'posts';
 
   function card(p) {
     return '<a class="post-card" href="/post.html?id=' + encodeURIComponent(p.id) + '"' +
@@ -61,63 +56,131 @@
     '</a>';
   }
 
-  function renderMe() {
+  /* ---------- banner 资料卡 ---------- */
+  function fmtDate(ts) {
+    if (!ts) return '';
+    var d = new Date(ts);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function renderBanner() {
     var u = Forum.me();
-    var box = Forum.q('#meBox');
-    if (!u) { box.innerHTML = '<button class="btn btn-primary" id="mLogin" style="width:100%">登录 / 注册</button>'; Forum.q('#mLogin').onclick = function () { Forum.openLogin(); }; return; }
-    box.innerHTML =
-      '<div class="who" style="margin-bottom:6px">' + Forum.avatarHtml(u, 'lg') + '<div><div style="font-size:.86rem">' + Forum.esc(u.nickname || 'Star ID 用户') + Forum.vBadge(u) + '</div>' +
-        '<div style="font-size:.7rem;color:var(--text-muted);font-family:ui-monospace,Menlo,monospace">' + Forum.esc(u.starId || '') + '</div></div></div>' +
-      '<a class="btn btn-ghost" href="https://www.caelus.top/account/" style="width:100%;margin-top:10px">账号中心</a>';
+    if (!u) {
+      bannerEl.innerHTML =
+        '<div class="pf-ava">?</div>' +
+        '<div style="min-width:0"><div class="pf-name">未登录</div>' +
+        '<div class="pf-days">登录后查看你的个人主页</div>' +
+        '<div style="margin-top:10px"><button class="pf-btn" id="bLogin">登录 / 注册</button></div></div>';
+      Forum.q('#bLogin').onclick = function () { Forum.openLogin(); };
+      return;
+    }
+    var ava = u.avatar
+      ? '<img class="pf-ava" src="' + Forum.esc(u.avatar) + '" alt="">'
+      : '<span class="pf-ava">' + Forum.esc(String(u.nickname || u.starId || '?').trim().charAt(0) || '?') + '</span>';
+    var days = '';
+    if (u.createdAt) {
+      var n = Math.max(1, Math.floor((Date.now() - u.createdAt) / 86400000));
+      days = '<div class="pf-days">已加入 ' + n + ' 天（' + fmtDate(u.createdAt) + ' 注册）</div>';
+    }
+    bannerEl.innerHTML =
+      ava +
+      '<div style="min-width:0">' +
+        '<div class="pf-name">' + Forum.esc(u.nickname || 'Star ID 用户') + Forum.vBadge(u) +
+          (u.verified ? '<span class="pf-pill">' + Forum.V_SVG + 'Caelus Studio</span>' : '') +
+        '</div>' +
+        '<div class="pf-meta">' +
+          (u.email ? '<span><i>✉</i>' + Forum.esc(u.email) + '</span>' : '') +
+          '<span><i>ID</i><span style="font-family:ui-monospace,Menlo,monospace">' + Forum.esc(u.starId || '') + '</span></span>' +
+        '</div>' + days +
+      '</div>' +
+      '<span class="grow"></span>' +
+      '<a class="pf-btn" href="/new.html">写帖子</a>' +
+      '<a class="pf-btn ghost" href="https://www.caelus.top/account/">账号中心</a>';
   }
 
-  function renderFollow() {
-    var card = Forum.q('#followCard'), box = Forum.q('#followBox');
-    if (!Forum.me()) { card.style.display = 'none'; return; }
-    card.style.display = '';
-    Forum.followlist().then(function (d) {
-      if (!d || !d.ok) { box.textContent = '加载失败，请刷新重试'; return; }
-      var item = function (x, canUnfollow) {
-        return '<div class="who" style="margin-bottom:8px">' + Forum.avatarHtml(x, 'sm') +
-          '<div style="min-width:0"><div style="font-size:.8rem">' + Forum.esc(x.nickname || '') + Forum.vBadge(x) + '</div>' +
-          '<div class="sid" style="font-size:.68rem">' + Forum.esc(x.starId || '') + '</div></div>' +
-          (canUnfollow && x.starId ? '<button class="follow-btn sm on" data-sid="' + Forum.esc(x.starId) + '" style="margin-left:auto">已关注</button>' : '') +
-          '</div>';
+  /* ---------- 关注 / 粉丝 ---------- */
+  function userRow(x, canUnfollow) {
+    var ava = x.avatar
+      ? '<img class="av lg" src="' + Forum.esc(x.avatar) + '" alt="">'
+      : '<span class="av lg">' + Forum.esc(String(x.nickname || '?').trim().charAt(0) || '?') + '</span>';
+    return '<div class="pf-user">' + ava +
+      '<div style="min-width:0">' +
+        '<div style="font-size:.84rem;display:flex;align-items:center;gap:4px">' + Forum.esc(x.nickname || '') + Forum.vBadge(x) + '</div>' +
+        '<div class="sid" style="font-size:.68rem">' + Forum.esc(x.starId || '') + '</div>' +
+      '</div>' +
+      (canUnfollow && x.starId ? '<button class="follow-btn sm on" data-sid="' + Forum.esc(x.starId) + '" style="margin-left:auto">已关注</button>' : '') +
+      '</div>';
+  }
+  function bindUnfollow(root) {
+    [].forEach.call(root.querySelectorAll('.follow-btn[data-sid]'), function (b) {
+      b.onclick = function () {
+        Forum.follow(b.getAttribute('data-sid'), 'unfollow').then(function (r) {
+          if (r && r.ok) loadPeople(curTab, true);
+        });
       };
-      box.innerHTML =
-        '<div style="font-size:.74rem;color:var(--text-muted);margin-bottom:6px">我的关注（' + d.following.length + '）</div>' +
-        (d.following.length ? d.following.map(function (x) { return item(x, true); }).join('') : '<div class="helper" style="margin-bottom:10px">还没有关注的人，去帖子页点「+ 关注」。</div>') +
-        '<div style="font-size:.74rem;color:var(--text-muted);margin:12px 0 6px">关注者（' + d.followers.length + '）</div>' +
-        (d.followers.length ? d.followers.map(function (x) { return item(x, false); }).join('') : '<div class="helper">还没有人关注你。</div>');
-      [].forEach.call(box.querySelectorAll('.follow-btn[data-sid]'), function (b) {
-        b.onclick = function () {
-          Forum.follow(b.getAttribute('data-sid'), 'unfollow').then(function (r) {
-            if (r && r.ok) renderFollow();
-          });
-        };
-      });
-    }).catch(function () { box.textContent = '加载失败，请刷新重试'; });
+    });
+  }
+  var followCache = null;
+  function loadPeople(tab, force) {
+    peopleEl.style.display = ''; listEl.style.display = 'none';
+    if (followCache && !force) { paintPeople(tab); return; }
+    peopleEl.innerHTML = '<div class="skel"></div>';
+    Forum.followlist().then(function (d) {
+      if (!d || !d.ok) { peopleEl.innerHTML = '<div class="empty"><b>加载失败</b>请刷新重试。</div>'; return; }
+      followCache = d;
+      paintPeople(tab);
+    }).catch(function () { peopleEl.innerHTML = '<div class="empty"><b>网络异常</b>请稍后刷新重试。</div>'; });
+  }
+  function paintPeople(tab) {
+    var d = followCache; if (!d) return;
+    var btn = tabsEl.querySelector('[data-tab="' + tab + '"]');
+    [].forEach.call(tabsEl.querySelectorAll('button'), function (b) { b.textContent = b.textContent.replace(/（\d+）$/, ''); });
+    var fb = tabsEl.querySelector('[data-tab="following"]'), wr = tabsEl.querySelector('[data-tab="followers"]');
+    fb.textContent = '关注（' + d.following.length + '）';
+    wr.textContent = '粉丝（' + d.followers.length + '）';
+    var list = tab === 'following' ? d.following : d.followers;
+    peopleEl.innerHTML = list.length
+      ? list.map(function (x) { return userRow(x, tab === 'following'); }).join('')
+      : '<div class="empty"><b>' + (tab === 'following' ? '还没有关注的人' : '还没有人关注你') + '</b>' +
+        (tab === 'following' ? '去帖子页点「+ 关注」。' : '多发帖子、多互动，就会有人来关注。') + '</div>';
+    bindUnfollow(peopleEl);
   }
 
-  function load() {
-    renderMe();
-    renderFollow();
+  /* ---------- 我的帖子 ---------- */
+  function loadPosts() {
+    peopleEl.style.display = 'none'; listEl.style.display = '';
     if (!Forum.me()) {
-      listEl.innerHTML = '<div class="empty"><b>登录后可以查看自己的帖子</b>' +
-        '用 Star ID 或 OK 账号登录即可。<div style="margin-top:16px"><button class="btn btn-primary" id="lLogin">登录 / 注册</button></div></div>';
-      Forum.q('#lLogin').onclick = function () { Forum.openLogin(); };
+      listEl.innerHTML = '<div class="empty"><b>登录后可以查看自己的帖子</b>用 Star ID、OK 账号或 GitSource 账号登录即可。</div>';
       return;
     }
     var p = new URLSearchParams({ token: Forum.token() });
     Forum.api('/api/forum/mine?' + p.toString()).then(function (d) {
       if (!d || !d.ok) { listEl.innerHTML = '<div class="empty"><b>加载失败</b>' + Forum.esc((d && d.error) || '') + '</div>'; return; }
-      Forum.q('#note').textContent = '我的帖子 · 共 ' + d.total + ' 篇';
+      var pb = tabsEl.querySelector('[data-tab="posts"]');
+      pb.textContent = '我的帖子（' + d.total + '）';
       if (!d.posts.length) {
         listEl.innerHTML = '<div class="empty"><b>还没有发过帖子</b>去论坛看看，或者直接写一篇。<div style="margin-top:16px"><a class="btn btn-primary" href="/new.html">写帖子</a></div></div>';
         return;
       }
       listEl.innerHTML = d.posts.map(card).join('');
     }).catch(function () { listEl.innerHTML = '<div class="empty"><b>网络异常</b>请稍后刷新重试。</div>'; });
+  }
+
+  /* ---------- tab 切换 ---------- */
+  function switchTab(tab) {
+    curTab = tab;
+    [].forEach.call(tabsEl.querySelectorAll('button'), function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === tab); });
+    if (tab === 'posts') loadPosts(); else loadPeople(tab);
+  }
+  [].forEach.call(tabsEl.querySelectorAll('button'), function (b) {
+    b.addEventListener('click', function () { switchTab(b.getAttribute('data-tab')); });
+  });
+
+  function load() {
+    renderBanner();
+    var u = Forum.me();
+    tabsEl.style.display = u ? '' : 'none';
+    followCache = null;
+    switchTab('posts');
   }
 
   Forum.init({

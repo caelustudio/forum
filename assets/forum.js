@@ -379,7 +379,7 @@
   /* ---------- 顶栏 / 页脚 ---------- */
   var NAV = [
     { href: '/', key: 'index', label: '论坛' },
-    { href: '/mine.html', key: 'mine', label: '我的帖子' }
+    { href: '/mine.html', key: 'mine', label: '个人主页' }
   ];
 
   function shell(active) {
@@ -441,7 +441,7 @@
           '<div style="font-size:.8rem;display:flex;align-items:center;gap:5px">' + esc(u.nickname || 'Star ID 用户') + vBadge(u) + '</div>' +
           '<div style="font-size:.68rem;color:var(--text-muted);font-family:ui-monospace,Menlo,monospace">' + esc(u.starId || '') + '</div>' +
         '</div>' +
-        '<a href="/mine.html" style="display:block;padding:8px 11px;border-radius:8px">我的帖子</a>' +
+        '<a href="/mine.html" style="display:block;padding:8px 11px;border-radius:8px">个人主页</a>' +
         '<a href="https://www.caelus.top/account/" style="display:block;padding:8px 11px;border-radius:8px">账号中心</a>' +
         '<button id="logoutBtn" style="display:block;width:100%;text-align:left;padding:8px 11px;border:0;background:transparent;color:var(--text-primary);border-radius:8px;cursor:pointer;font-size:.82rem">退出登录</button>';
       document.body.appendChild(m);
@@ -548,6 +548,7 @@
     follow: follow, followlist: followlist,
     like: like, remove: remove, track: track, requireLogin: requireLogin, openLogin: openLogin,
     esc: esc, linkify: linkify, md: md, hl: hl, timeAgo: timeAgo, avatarHtml: avatarHtml, vBadge: vBadge, tagsHtml: tagsHtml,
+    V_SVG: V_SVG,
     q: q, init: init, renderRight: renderRight
   };
 })();
